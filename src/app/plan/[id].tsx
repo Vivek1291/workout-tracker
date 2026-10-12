@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { useData } from '../../data/DataProvider';
 import { ExercisePicker } from '../../components/ExercisePicker';
-import { MuscleMap } from '../../components/MuscleMap';
+import { ExerciseImage } from '../../components/ExerciseImage';
 import { confirm } from '../../components/confirm';
 import { colors, space } from '../../components/theme';
 import { Button, Card, Chip, Empty, Field, Muted, NumberInput, Row, Screen, SectionHeader } from '../../components/ui';
@@ -171,7 +171,7 @@ export default function PlanEditor() {
                   >
                     <Row style={{ justifyContent: 'space-between' }}>
                       <Row style={{ flexShrink: 1 }}>
-                        <MuscleMap exercise={exerciseById(pe.exerciseId)} size={44} />
+                        <ExerciseImage exercise={exerciseById(pe.exerciseId)} size={44} />
                         <View style={{ flexShrink: 1 }}>
                           <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>
                             {ei + 1}. {exerciseById(pe.exerciseId)?.name ?? 'Deleted exercise'}

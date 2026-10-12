@@ -41,6 +41,26 @@ export const MUSCLE_GROUPS: MuscleGroup[] = [
   'Other',
 ];
 
+/** Muscle areas drawn on the body diagram. */
+export type Region =
+  | 'chest'
+  | 'frontDelts'
+  | 'sideDelts'
+  | 'rearDelts'
+  | 'traps'
+  | 'biceps'
+  | 'triceps'
+  | 'forearms'
+  | 'abs'
+  | 'obliques'
+  | 'lats'
+  | 'upperBack'
+  | 'lowerBack'
+  | 'glutes'
+  | 'quads'
+  | 'hamstrings'
+  | 'calves';
+
 export interface Exercise extends BaseDoc {
   name: string;
   muscleGroup: MuscleGroup;
@@ -49,6 +69,13 @@ export interface Exercise extends BaseDoc {
   /** 'time' = the reps field holds seconds (planks, hangs). */
   measure?: 'reps' | 'time';
   notes?: string;
+  /** Which picture to show. Defaults to the body diagram. */
+  picture?: 'diagram' | 'photo';
+  /** Uploaded photo as a small JPEG data URI (kept inside the JSON so it exports/syncs). */
+  imageUri?: string;
+  /** Muscles picked by hand on the diagram; when set they replace the ones derived from the text. */
+  primaryRegions?: Region[];
+  secondaryRegions?: Region[];
 }
 
 /**

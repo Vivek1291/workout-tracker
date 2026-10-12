@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, Text, View } from 'react-native';
+import { FlatList, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useData } from '../data/DataProvider';
 import { newId, nowIso } from '../lib/id';
 import { MUSCLE_GROUPS, MuscleGroup } from '../types';
-import { MuscleMap } from './MuscleMap';
+import { ExerciseImage } from './ExerciseImage';
 import { colors, space } from './theme';
 import { Button, Chip, Field, Muted, styles } from './ui';
 
@@ -51,22 +51,27 @@ export function ExercisePicker({
             <Text style={styles.title}>Choose exercise</Text>
             <Button title="Close" variant="ghost" small onPress={onClose} />
           </View>
-          <Field placeholder="Search or type a new exercise…" value={query} onChangeText={setQuery} autoFocus />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-            <Chip label="All" selected={!group} onPress={() => setGroup(null)} />
-            {MUSCLE_GROUPS.map((g) => (
-              <Chip key={g} label={g} selected={group === g} onPress={() => setGroup(group === g ? null : g)} />
-            ))}
+          {/* Header must not shrink, or the list squeezes the search box under the chips. */}
+          <View style={{ flexShrink: 0 }}>
+            <Field placeholder="Search or type a new exercise…" value={query} onChangeText={setQuery} autoFocus />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }}>
+              <Chip label="All" selected={!group} onPress={() => setGroup(null)} />
+              {MUSCLE_GROUPS.map((g) => (
+                <Chip key={g} label={g} selected={group === g} onPress={() => setGroup(group === g ? null : g)} />
+              ))}
+            </ScrollView>
+            {query.trim() && !exactMatch ? (
+              <Button
+                title={`+ Create "${query.trim()}"${group ? ` (${group})` : ''}`}
+                variant="secondary"
+                onPress={createAndPick}
+                style={{ marginBottom: space(3) }}
+              />
+            ) : null}
+            <Muted style={{ marginBottom: space(1) }}>{list.length} exercises</Muted>
           </View>
-          {query.trim() && !exactMatch ? (
-            <Button
-              title={`+ Create "${query.trim()}"${group ? ` (${group})` : ''}`}
-              variant="secondary"
-              onPress={createAndPick}
-              style={{ marginBottom: space(3) }}
-            />
-          ) : null}
           <FlatList
+            style={{ flex: 1 }}
             data={list}
             keyExtractor={(e) => e.id}
             keyboardShouldPersistTaps="handled"
@@ -82,7 +87,7 @@ export function ExercisePicker({
                 })}
               >
                 <View style={[styles.row, { gap: space(3) }]}>
-                  <MuscleMap exercise={item} size={48} />
+                  <ExerciseImage exercise={item} size={48} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 16, color: colors.text }}>{item.name}</Text>
                     <Muted>{item.primaryMuscle ?? item.muscleGroup}</Muted>

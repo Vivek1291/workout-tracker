@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useData } from '../../data/DataProvider';
 import { ExercisePicker } from '../../components/ExercisePicker';
-import { MuscleMap } from '../../components/MuscleMap';
+import { ExerciseImage } from '../../components/ExerciseImage';
 import { confirm } from '../../components/confirm';
 import { colors, radius, space } from '../../components/theme';
 import { Button, Card, Empty, Field, Muted, NumberInput, Row, Screen } from '../../components/ui';
@@ -174,7 +174,7 @@ export default function WorkoutScreen() {
           <Card key={entry.id}>
             <Row style={{ justifyContent: 'space-between' }}>
               <Row style={{ flexShrink: 1 }}>
-                <MuscleMap exercise={ex} size={52} />
+                <ExerciseImage exercise={ex} size={52} />
                 <View style={{ flexShrink: 1 }}>
                   <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>{ex?.name ?? 'Deleted exercise'}</Text>
                   {ex?.primaryMuscle ? <Muted>{ex.primaryMuscle}</Muted> : null}

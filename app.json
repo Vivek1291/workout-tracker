@@ -26,7 +26,14 @@
       "output": "single"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Workout Tracker to use your photos for exercise pictures.",
+          "cameraPermission": "Allow Workout Tracker to take photos for exercise pictures."
+        }
+      ]
     ],
     "scheme": "workouttracker"
   }

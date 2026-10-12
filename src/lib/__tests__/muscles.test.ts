@@ -24,3 +24,10 @@ describe('muscle regions', () => {
     for (const row of LIBRARY) expect(regions(row[0]).primary.length).toBeGreaterThan(0);
   });
 });
+
+describe('manual muscle selection', () => {
+  it('overrides the text-derived regions', () => {
+    const ex = { muscleGroup: 'Chest' as const, primaryMuscle: 'Upper chest', primaryRegions: ['frontDelts' as const], secondaryRegions: ['chest' as const, 'frontDelts' as const] };
+    expect(exerciseRegions(ex)).toEqual({ primary: ['frontDelts'], secondary: ['chest'] });
+  });
+});

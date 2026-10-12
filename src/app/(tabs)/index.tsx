@@ -7,7 +7,7 @@ import { Button, Card, Chip, Muted, Row, SectionHeader, Screen, Stat, Title } fr
 import { addDays, formatDate, todayKey, WEEKDAYS_SHORT, weekdayIndex } from '../../lib/date';
 import { newPlan } from '../../lib/plan';
 import { lastWorkingSets, Suggestion, suggestTarget } from '../../lib/progression';
-import { MuscleMap } from '../../components/MuscleMap';
+import { ExerciseImage } from '../../components/ExerciseImage';
 import { PlannedExercise } from '../../types';
 import { dayTitle, planDayForDate } from '../../lib/schedule';
 import { createSession } from '../../lib/session';
@@ -187,7 +187,7 @@ export default function TodayScreen() {
                 <View style={{ marginTop: space(2) }}>
                   {preview.map(({ pe, ex, name, s }, i) => (
                     <Row key={pe.id} style={{ paddingVertical: space(2), borderBottomWidth: 1, borderBottomColor: colors.border, alignItems: 'center' }}>
-                      <MuscleMap exercise={ex} size={44} />
+                      <ExerciseImage exercise={ex} size={44} />
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>
                           {i + 1}. {name}

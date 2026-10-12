@@ -1,23 +1,6 @@
-import { Exercise, MuscleGroup } from '../types';
+import { Exercise, MuscleGroup, Region } from '../types';
 
-export type Region =
-  | 'chest'
-  | 'frontDelts'
-  | 'sideDelts'
-  | 'rearDelts'
-  | 'traps'
-  | 'biceps'
-  | 'triceps'
-  | 'forearms'
-  | 'abs'
-  | 'obliques'
-  | 'lats'
-  | 'upperBack'
-  | 'lowerBack'
-  | 'glutes'
-  | 'quads'
-  | 'hamstrings'
-  | 'calves';
+export type { Region };
 
 // Order matters: more specific phrases first.
 const KEYWORDS: [RegExp, Region[]][] = [
@@ -76,10 +59,38 @@ export function regionsFromText(text: string | undefined): Region[] {
   return [...found];
 }
 
-export function exerciseRegions(ex: Pick<Exercise, 'muscleGroup' | 'primaryMuscle' | 'secondaryMuscles'>): {
+export const REGION_LABELS: Record<Region, string> = {
+  chest: 'Chest',
+  frontDelts: 'Front delts',
+  sideDelts: 'Side delts',
+  rearDelts: 'Rear delts',
+  traps: 'Traps',
+  biceps: 'Biceps',
+  triceps: 'Triceps',
+  forearms: 'Forearms',
+  abs: 'Abs',
+  obliques: 'Obliques',
+  lats: 'Lats',
+  upperBack: 'Upper back',
+  lowerBack: 'Lower back',
+  glutes: 'Glutes',
+  quads: 'Quads',
+  hamstrings: 'Hamstrings',
+  calves: 'Calves',
+};
+
+export const ALL_REGIONS = Object.keys(REGION_LABELS) as Region[];
+
+export type ExerciseMuscles = Pick<Exercise, 'muscleGroup' | 'primaryMuscle' | 'secondaryMuscles' | 'primaryRegions' | 'secondaryRegions'>;
+
+export function exerciseRegions(ex: ExerciseMuscles): {
   primary: Region[];
   secondary: Region[];
 } {
+  if (ex.primaryRegions?.length || ex.secondaryRegions?.length) {
+    const primary = ex.primaryRegions ?? [];
+    return { primary, secondary: (ex.secondaryRegions ?? []).filter((r) => !primary.includes(r)) };
+  }
   let primary = regionsFromText(ex.primaryMuscle);
   if (primary.length === 0) primary = GROUP_FALLBACK[ex.muscleGroup] ?? [];
   const secondary = regionsFromText(ex.secondaryMuscles).filter((r) => !primary.includes(r));

@@ -1,12 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Image, Platform, Text, View } from 'react-native';
 import { useData } from '../../data/DataProvider';
-import { confirm } from '../../components/confirm';
+import { confirm, notify } from '../../components/confirm';
+import { ExerciseImage } from '../../components/ExerciseImage';
 import { MuscleMap, PRIMARY, SECONDARY } from '../../components/MuscleMap';
 import { colors, space } from '../../components/theme';
-import { Button, Card, Chip, Field, Muted, Row, Screen, SectionHeader } from '../../components/ui';
+import { Button, Card, Chip, Field, Muted, Row, Screen, SectionHeader, Segmented, styles } from '../../components/ui';
+import { ALL_REGIONS, exerciseRegions, REGION_LABELS } from '../../lib/muscles';
+import { pickExercisePhoto } from '../../lib/photo';
 import { newId, nowIso } from '../../lib/id';
-import { Exercise, MUSCLE_GROUPS, MuscleGroup } from '../../types';
+import { Exercise, MUSCLE_GROUPS, MuscleGroup, Region } from '../../types';
 
 function ExerciseForm({ initial, onDone }: { initial?: Exercise; onDone: () => void }) {
   const { saveExercise } = useData();
@@ -16,10 +19,55 @@ function ExerciseForm({ initial, onDone }: { initial?: Exercise; onDone: () => v
   const [primary, setPrimary] = useState(initial?.primaryMuscle ?? '');
   const [secondary, setSecondary] = useState(initial?.secondaryMuscles ?? '');
   const [measure, setMeasure] = useState<'reps' | 'time'>(initial?.measure ?? 'reps');
+  const [picture, setPicture] = useState<'diagram' | 'photo'>(initial?.picture ?? 'diagram');
+  const [imageUri, setImageUri] = useState<string | undefined>(initial?.imageUri);
+  const [busy, setBusy] = useState(false);
+  // null = derive muscles from the text fields; otherwise picked by hand on the diagram.
+  const [manual, setManual] = useState<{ primary: Region[]; secondary: Region[] } | null>(
+    initial?.primaryRegions?.length || initial?.secondaryRegions?.length
+      ? { primary: initial.primaryRegions ?? [], secondary: initial.secondaryRegions ?? [] }
+      : null,
+  );
+
+  const preview = {
+    name: name || 'exercise',
+    muscleGroup: group,
+    primaryMuscle: primary,
+    secondaryMuscles: secondary,
+    primaryRegions: manual?.primary,
+    secondaryRegions: manual?.secondary,
+  };
+  const current = exerciseRegions(preview);
+
+  /** Tap cycles a muscle: off → primary → secondary → off. */
+  const cycleRegion = (r: Region) => {
+    const base = manual ?? { primary: current.primary, secondary: current.secondary };
+    let next;
+    if (base.primary.includes(r)) next = { primary: base.primary.filter((x) => x !== r), secondary: [...base.secondary, r] };
+    else if (base.secondary.includes(r)) next = { primary: base.primary, secondary: base.secondary.filter((x) => x !== r) };
+    else next = { primary: [...base.primary, r], secondary: base.secondary };
+    setManual(next);
+  };
+
+  const addPhoto = async (source: 'library' | 'camera') => {
+    setBusy(true);
+    try {
+      const uri = await pickExercisePhoto(source);
+      if (uri) {
+        setImageUri(uri);
+        setPicture('photo');
+      }
+    } catch (e) {
+      notify('Could not add photo', (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const save = async () => {
     if (!name.trim()) return;
     const now = nowIso();
+    const hasManual = !!manual && (manual.primary.length > 0 || manual.secondary.length > 0);
     await saveExercise({
       id: initial?.id ?? newId(),
       createdAt: initial?.createdAt ?? now,
@@ -30,6 +78,10 @@ function ExerciseForm({ initial, onDone }: { initial?: Exercise; onDone: () => v
       secondaryMuscles: secondary.trim() || undefined,
       measure: measure === 'time' ? 'time' : undefined,
       notes: notes.trim() || undefined,
+      picture: picture === 'photo' && imageUri ? 'photo' : 'diagram',
+      imageUri,
+      primaryRegions: hasManual ? manual!.primary : undefined,
+      secondaryRegions: hasManual ? manual!.secondary : undefined,
     });
     onDone();
   };
@@ -37,22 +89,70 @@ function ExerciseForm({ initial, onDone }: { initial?: Exercise; onDone: () => v
   return (
     <Card style={{ borderColor: colors.accent, borderWidth: 1 }}>
       <Field label="Name" value={name} onChangeText={setName} placeholder="e.g. Cable Row" autoFocus />
-      <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: space(1) }}>Muscle group</Text>
+      <Text style={styles.label}>Muscle group</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {MUSCLE_GROUPS.map((g) => (
           <Chip key={g} label={g} selected={group === g} onPress={() => setGroup(g)} />
         ))}
       </View>
-      <Row style={{ alignItems: 'flex-start' }}>
-        <View style={{ flex: 1 }}>
-          <Field label="Primary muscle" value={primary} onChangeText={setPrimary} placeholder="e.g. Upper chest" />
-          <Field label="Secondary muscles" value={secondary} onChangeText={setSecondary} placeholder="e.g. Triceps, front delts" />
+      <Field label="Primary muscle" value={primary} onChangeText={setPrimary} placeholder="e.g. Upper chest" />
+      <Field label="Secondary muscles" value={secondary} onChangeText={setSecondary} placeholder="e.g. Triceps, front delts" />
+
+      <Text style={styles.label}>Picture</Text>
+      <Segmented<'diagram' | 'photo'>
+        options={[
+          { value: 'diagram', label: 'Body diagram' },
+          { value: 'photo', label: 'Photo' },
+        ]}
+        value={picture}
+        onChange={setPicture}
+      />
+
+      {picture === 'diagram' ? (
+        <View style={{ alignItems: 'center', marginBottom: space(3) }}>
+          <MuscleMap exercise={preview} size={200} legend onPressRegion={cycleRegion} />
+          <Muted style={{ textAlign: 'center', marginTop: space(2) }}>
+            Tap a muscle to change it: once = primary, twice = secondary, three times = off.
+          </Muted>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: space(2) }}>
+            {ALL_REGIONS.map((r) => {
+              const state = current.primary.includes(r) ? 'primary' : current.secondary.includes(r) ? 'secondary' : 'off';
+              return (
+                <Chip
+                  key={r}
+                  label={`${REGION_LABELS[r]}${state === 'primary' ? ' ●' : state === 'secondary' ? ' ○' : ''}`}
+                  selected={state !== 'off'}
+                  color={state === 'primary' ? PRIMARY : '#6f9fd8'}
+                  onPress={() => cycleRegion(r)}
+                />
+              );
+            })}
+          </View>
+          {manual ? (
+            <Button title="Reset to automatic (from muscle text)" small variant="ghost" onPress={() => setManual(null)} />
+          ) : (
+            <Muted>Highlighted automatically from the muscle fields above.</Muted>
+          )}
         </View>
-        <View style={{ alignItems: 'center', paddingTop: space(4) }}>
-          <MuscleMap exercise={{ name: name || 'exercise', muscleGroup: group, primaryMuscle: primary, secondaryMuscles: secondary }} size={110} legend />
+      ) : (
+        <View style={{ alignItems: 'center', marginBottom: space(3) }}>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={{ width: 180, height: 180, borderRadius: 12 }} accessibilityLabel="Exercise photo" />
+          ) : (
+            <View style={{ width: 180, height: 180, borderRadius: 12, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border }}>
+              <Muted>No photo yet</Muted>
+            </View>
+          )}
+          <Row style={{ marginTop: space(3), flexWrap: 'wrap', justifyContent: 'center' }}>
+            <Button title={imageUri ? 'Change photo' : 'Upload photo'} small disabled={busy} onPress={() => addPhoto('library')} />
+            {Platform.OS !== 'web' ? <Button title="Take photo" small variant="secondary" disabled={busy} onPress={() => addPhoto('camera')} /> : null}
+            {imageUri ? <Button title="Remove" small variant="danger" onPress={() => setImageUri(undefined)} /> : null}
+          </Row>
+          <Muted style={{ textAlign: 'center', marginTop: space(2) }}>Photos are cropped square and shrunk to save space.</Muted>
         </View>
-      </Row>
-      <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: space(1) }}>Track</Text>
+      )}
+
+      <Text style={styles.label}>Track</Text>
       <View style={{ flexDirection: 'row' }}>
         <Chip label="Reps" selected={measure === 'reps'} onPress={() => setMeasure('reps')} />
         <Chip label="Time (seconds)" selected={measure === 'time'} onPress={() => setMeasure('time')} />
@@ -117,7 +217,7 @@ export default function ExercisesScreen() {
             ) : (
               <Card key={ex.id} style={{ paddingVertical: space(3) }}>
                 <Row style={{ alignItems: 'flex-start' }}>
-                  <MuscleMap exercise={ex} size={64} />
+                  <ExerciseImage exercise={ex} size={64} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{ex.name}</Text>
                     {ex.primaryMuscle ? (

@@ -5,8 +5,8 @@ import { useData } from '../../data/DataProvider';
 import { ExercisePicker } from '../../components/ExercisePicker';
 import { confirm } from '../../components/confirm';
 import { colors, radius, space } from '../../components/theme';
-import { Button, Card, Empty, Field, Muted, NumberInput, Row, Screen, Stat } from '../../components/ui';
-import { isValidDateKey } from '../../lib/date';
+import { Button, Card, Empty, Field, Muted, NumberInput, Row, Screen } from '../../components/ui';
+import { formatDate, isValidDateKey } from '../../lib/date';
 import { newId, nowIso } from '../../lib/id';
 import { lastWorkingSets } from '../../lib/progression';
 import { estimate1RM, formatNumber, summarizeSession } from '../../lib/stats';
@@ -24,6 +24,16 @@ export default function WorkoutScreen() {
   const pending = useRef<WorkoutSession | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deleted = useRef(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [restStart, setRestStart] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  // Tick once a second while the rest timer is running.
+  useEffect(() => {
+    if (restStart === null) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [restStart]);
 
   useEffect(() => {
     if (!session && stored) {
@@ -86,28 +96,67 @@ export default function WorkoutScreen() {
   };
 
   const sum = summarizeSession(session);
+  const totalSets = session.entries.reduce((a, e) => a + e.sets.length, 0);
+  const doneSets = session.entries.reduce((a, e) => a + e.sets.filter((x) => x.completed).length, 0);
   const unit = settings.weightUnit;
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: session.finishedAt ? 'Workout log' : 'Workout in progress' }} />
-      <Field label="Workout" value={session.title} onChangeText={(title) => update((s) => ({ ...s, title }))} />
-      <Field
-        label="Date (YYYY-MM-DD)"
-        value={dateText}
-        onChangeText={(t) => {
-          setDateText(t);
-          if (isValidDateKey(t)) update((s) => ({ ...s, date: t }));
+      <Stack.Screen
+        options={{
+          title: session.finishedAt ? 'Workout log' : 'Workout',
+          headerRight: () => <Button title={session.finishedAt ? 'Done' : 'Finish'} small onPress={finish} />,
         }}
       />
+      <Pressable onPress={() => setShowDetails((v) => !v)}>
+        <Row style={{ justifyContent: 'space-between', marginBottom: space(2) }}>
+          <View style={{ flexShrink: 1 }}>
+            <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>{session.title || 'Workout'}</Text>
+            <Muted>{formatDate(session.date)}</Muted>
+          </View>
+          <Text style={{ color: colors.accent, fontWeight: '600' }}>{showDetails ? 'Hide' : 'Edit name/date'}</Text>
+        </Row>
+      </Pressable>
+      {showDetails ? (
+        <Card>
+          <Field label="Workout name" value={session.title} onChangeText={(title) => update((s) => ({ ...s, title }))} />
+          <Field
+            label="Date (YYYY-MM-DD) — change it to log a past workout"
+            value={dateText}
+            onChangeText={(t) => {
+              setDateText(t);
+              if (isValidDateKey(t)) update((s) => ({ ...s, date: t }));
+            }}
+          />
+        </Card>
+      ) : null}
 
       <Card>
-        <Row>
-          <Stat label="Sets done" value={String(sum.sets)} />
-          <Stat label="Reps" value={String(sum.reps)} />
-          <Stat label={`Volume (${unit})`} value={formatNumber(sum.volume)} />
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Text style={{ fontWeight: '600', color: colors.text }}>
+            {doneSets} of {totalSets} sets done
+          </Text>
+          <Muted>
+            {sum.reps} reps · {formatNumber(sum.volume)} {unit}
+          </Muted>
         </Row>
+        <View style={{ height: 8, backgroundColor: colors.bg, borderRadius: 4, marginTop: space(2), overflow: 'hidden' }}>
+          <View style={{ height: 8, width: `${totalSets ? (doneSets / totalSets) * 100 : 0}%`, backgroundColor: colors.success, borderRadius: 4 }} />
+        </View>
       </Card>
+
+      {restStart !== null && !session.finishedAt ? (
+        <Pressable onPress={() => setRestStart(null)}>
+          <Card style={{ backgroundColor: colors.accentSoft, borderColor: colors.accentSoft }}>
+            <Row style={{ justifyContent: 'space-between' }}>
+              <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 16, fontVariant: ['tabular-nums'] }}>
+                ⏱ Rest {formatTimer(now - restStart)}
+              </Text>
+              <Text style={{ color: colors.accent }}>Tap to hide</Text>
+            </Row>
+          </Card>
+        </Pressable>
+      ) : null}
 
       {session.entries.length === 0 ? (
         <Empty title="No exercises yet" body="Add an exercise to start logging sets." />
@@ -194,7 +243,13 @@ export default function WorkoutScreen() {
                   <Pressable
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: set.completed }}
-                    onPress={() => updateSet(entry.id, set.id, (x) => ({ ...x, completed: !x.completed }))}
+                    onPress={() => {
+                      if (!set.completed) {
+                        setRestStart(Date.now());
+                        setNow(Date.now());
+                      }
+                      updateSet(entry.id, set.id, (x) => ({ ...x, completed: !x.completed }));
+                    }}
                     style={{
                       width: 40,
                       height: 40,
@@ -288,6 +343,11 @@ export default function WorkoutScreen() {
       <ExercisePicker visible={picker} onClose={() => setPicker(false)} onSelect={addExercise} />
     </Screen>
   );
+}
+
+function formatTimer(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
 const headerCell = { fontSize: 11, color: colors.textMuted, textAlign: 'center' as const, fontWeight: '600' as const };

@@ -1,12 +1,12 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { useData } from '../../data/DataProvider';
 import { ExercisePicker } from '../../components/ExercisePicker';
 import { confirm } from '../../components/confirm';
 import { colors, space } from '../../components/theme';
 import { Button, Card, Chip, Empty, Field, Muted, NumberInput, Row, Screen, SectionHeader } from '../../components/ui';
-import { addDays, isValidDateKey, todayKey, WEEKDAYS } from '../../lib/date';
+import { addDays, isValidDateKey, todayKey, WEEKDAYS, WEEKDAYS_SHORT } from '../../lib/date';
 import { newId } from '../../lib/id';
 import { blankDay } from '../../lib/plan';
 import { DEFAULT_PROGRESSION, PROGRESSION_OPTIONS } from '../../lib/progression';
@@ -22,13 +22,14 @@ function move<T>(list: T[], from: number, to: number): T[] {
 }
 
 export default function PlanEditor() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, day: dayParam } = useLocalSearchParams<{ id: string; day?: string }>();
   const { data, savePlan, exerciseById, settings } = useData();
   const stored = data.plans.find((p) => p.id === id);
   const [draft, setDraft] = useState<WorkoutPlan | null>(stored ? JSON.parse(JSON.stringify(stored)) : null);
   const [dirty, setDirty] = useState(false);
   const [pickerFor, setPickerFor] = useState<string | null>(null); // day id
   const [startDateText, setStartDateText] = useState(stored?.startDate ?? todayKey());
+  const [selDay, setSelDay] = useState(() => Number(dayParam) || 0);
 
   useEffect(() => {
     if (!draft && stored) setDraft(JSON.parse(JSON.stringify(stored)));
@@ -68,6 +69,9 @@ export default function PlanEditor() {
     });
 
   const todayIndex = planDayForDate(draft, todayKey())?.index;
+  const di = Math.max(0, Math.min(selDay, draft.days.length - 1));
+  const day = draft.days[di];
+  const dayName = (i: number) => (draft.mode === 'weekly' ? WEEKDAYS[i] : `Day ${i + 1}`);
 
   return (
     <Screen>
@@ -79,51 +83,56 @@ export default function PlanEditor() {
       />
       <Field label="Plan name" value={draft.name} onChangeText={(name) => update((p) => ({ ...p, name }))} />
 
-      <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: space(1) }}>Schedule type</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        <Chip label="Weekly (Mon–Sun)" selected={draft.mode === 'weekly'} onPress={() => switchMode('weekly')} />
-        <Chip label="Rotation (N-day cycle)" selected={draft.mode === 'cycle'} onPress={() => switchMode('cycle')} />
-      </View>
 
-      {draft.mode === 'cycle' ? (
-        <Card>
-          <Field
-            label="Cycle start date (YYYY-MM-DD) — Day 1 falls on this date"
-            value={startDateText}
-            onChangeText={(t) => {
-              setStartDateText(t);
-              if (isValidDateKey(t)) update((p) => ({ ...p, startDate: t }));
+      <SectionHeader>Pick a day to edit</SectionHeader>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space(3) }}>
+        {draft.days.map((d, i) => {
+          const selected = i === di;
+          const tint = d.isRest ? colors.rest : colors.accent;
+          return (
+            <Pressable
+              key={d.id}
+              onPress={() => setSelDay(i)}
+              style={{
+                width: 68,
+                paddingVertical: space(2),
+                marginRight: space(2),
+                borderRadius: 10,
+                alignItems: 'center',
+                backgroundColor: selected ? tint : colors.surface,
+                borderWidth: i === todayIndex ? 2 : 1,
+                borderColor: i === todayIndex ? colors.accent : colors.border,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: selected ? '#fff' : colors.textSecondary }}>
+                {draft.mode === 'weekly' ? WEEKDAYS_SHORT[i] : `Day ${i + 1}`}
+              </Text>
+              <Text numberOfLines={1} style={{ fontSize: 11, color: selected ? '#fff' : d.isRest ? colors.rest : colors.text, maxWidth: 60 }}>
+                {d.isRest ? 'Rest' : d.label || 'Workout'}
+              </Text>
+              <Text style={{ fontSize: 10, color: selected ? '#fff' : colors.textMuted }}>
+                {d.isRest ? '' : `${d.exercises.length} ex.`}
+              </Text>
+            </Pressable>
+          );
+        })}
+        {draft.mode === 'cycle' ? (
+          <Pressable
+            onPress={() => {
+              update((p) => ({ ...p, days: [...p.days, blankDay('Workout')] }));
+              setSelDay(draft.days.length);
             }}
-          />
-          <Muted>Today is Day {(todayIndex ?? 0) + 1}. Tap a day below to make it today's workout:</Muted>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: space(2) }}>
-            {draft.days.map((d, i) => (
-              <Chip
-                key={d.id}
-                label={`Day ${i + 1}`}
-                selected={i === todayIndex}
-                onPress={() => {
-                  const start = addDays(todayKey(), -i);
-                  setStartDateText(start);
-                  update((p) => ({ ...p, startDate: start }));
-                }}
-              />
-            ))}
-          </View>
-        </Card>
-      ) : null}
-
-      <Row style={{ justifyContent: 'space-between', marginVertical: space(2) }}>
-        <Text style={{ color: colors.text, fontSize: 15 }}>Active plan (drives the Today screen)</Text>
-        <Switch value={draft.isActive} onValueChange={(isActive) => update((p) => ({ ...p, isActive }))} />
-      </Row>
-
-      <SectionHeader>Days</SectionHeader>
-      {draft.days.map((day, di) => (
+            style={{ width: 68, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ color: colors.accent, fontWeight: '700' }}>+ Day</Text>
+          </Pressable>
+        ) : null}
+      </ScrollView>
+      {day ? (
         <Card key={day.id} style={day.isRest ? { backgroundColor: colors.restSoft, borderColor: colors.restSoft } : undefined}>
           <Row style={{ justifyContent: 'space-between' }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: day.isRest ? colors.rest : colors.text }}>
-              {draft.mode === 'weekly' ? WEEKDAYS[di] : `Day ${di + 1}`}
+              {dayName(di)}
               {di === todayIndex ? '  · today' : ''}
             </Text>
             <Row>
@@ -212,8 +221,14 @@ export default function PlanEditor() {
 
           {draft.mode === 'cycle' ? (
             <Row style={{ marginTop: space(3), flexWrap: 'wrap' }}>
-              <Button title="Move up" small variant="ghost" onPress={() => update((p) => ({ ...p, days: move(p.days, di, di - 1) }))} />
-              <Button title="Move down" small variant="ghost" onPress={() => update((p) => ({ ...p, days: move(p.days, di, di + 1) }))} />
+              <Button title="◀ Move earlier" small variant="ghost" onPress={() => {
+                  update((p) => ({ ...p, days: move(p.days, di, di - 1) }));
+                  setSelDay(Math.max(0, di - 1));
+                }} />
+              <Button title="Move later ▶" small variant="ghost" onPress={() => {
+                  update((p) => ({ ...p, days: move(p.days, di, di + 1) }));
+                  setSelDay(Math.min(draft.days.length - 1, di + 1));
+                }} />
               <Button
                 title="Remove day"
                 small
@@ -221,22 +236,64 @@ export default function PlanEditor() {
                 disabled={draft.days.length <= 1}
                 onPress={async () => {
                   if (await confirm('Remove day?', `Day ${di + 1} will be removed from the rotation.`, 'Remove'))
+                    {
                     update((p) => ({ ...p, days: p.days.filter((d) => d.id !== day.id) }));
+                    setSelDay(Math.max(0, di - 1));
+                  }
                 }}
               />
             </Row>
           ) : null}
         </Card>
-      ))}
+      ) : null}
 
       {draft.mode === 'cycle' ? (
         <Row style={{ marginBottom: space(3) }}>
-          <Button title="+ Training day" variant="secondary" style={{ flex: 1 }} onPress={() => update((p) => ({ ...p, days: [...p.days, blankDay('Workout')] }))} />
-          <Button title="+ Rest day" variant="secondary" style={{ flex: 1 }} onPress={() => update((p) => ({ ...p, days: [...p.days, blankDay('Rest', true)] }))} />
+          <Button title="+ Add training day" variant="secondary" style={{ flex: 1 }} onPress={() => { update((p) => ({ ...p, days: [...p.days, blankDay('Workout')] })); setSelDay(draft.days.length); }} />
+          <Button title="+ Add rest day" variant="secondary" style={{ flex: 1 }} onPress={() => { update((p) => ({ ...p, days: [...p.days, blankDay('Rest', true)] })); setSelDay(draft.days.length); }} />
         </Row>
       ) : null}
 
-      <Button title="Save plan" onPress={save} />
+      <SectionHeader>Plan settings</SectionHeader>
+      <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: space(1) }}>Schedule type</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        <Chip label="Weekly (Mon–Sun)" selected={draft.mode === 'weekly'} onPress={() => switchMode('weekly')} />
+        <Chip label="Rotation (N-day cycle)" selected={draft.mode === 'cycle'} onPress={() => switchMode('cycle')} />
+      </View>
+
+      {draft.mode === 'cycle' ? (
+        <Card>
+          <Field
+            label="Cycle start date (YYYY-MM-DD) — Day 1 falls on this date"
+            value={startDateText}
+            onChangeText={(t) => {
+              setStartDateText(t);
+              if (isValidDateKey(t)) update((p) => ({ ...p, startDate: t }));
+            }}
+          />
+          <Muted>Today is Day {(todayIndex ?? 0) + 1}. Tap a day below to make it today's workout:</Muted>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: space(2) }}>
+            {draft.days.map((d, i) => (
+              <Chip
+                key={d.id}
+                label={`Day ${i + 1}`}
+                selected={i === todayIndex}
+                onPress={() => {
+                  const start = addDays(todayKey(), -i);
+                  setStartDateText(start);
+                  update((p) => ({ ...p, startDate: start }));
+                }}
+              />
+            ))}
+          </View>
+        </Card>
+      ) : null}
+
+      <Row style={{ justifyContent: 'space-between', marginVertical: space(2) }}>
+        <Text style={{ color: colors.text, fontSize: 15 }}>Active plan (drives the Today screen)</Text>
+        <Switch value={draft.isActive} onValueChange={(isActive) => update((p) => ({ ...p, isActive }))} />
+      </Row>
+      <Button title="Save plan" onPress={save} style={{ marginTop: space(2) }} />
 
       <ExercisePicker
         visible={pickerFor !== null}

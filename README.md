@@ -10,18 +10,19 @@ One codebase runs as a native iPhone app and as a React web app.
   - *Rotation*: an N-day cycle (e.g. Push / Pull / Legs / Rest) that repeats from a start date.
 - **Rest days.** Toggle any day to rest.
 - **Fully editable.** Rename days, add, remove or reorder exercises and days, set targets (sets × reps × weight), duplicate plans, and choose which plan is active.
+- **Guided start.** First-time users get a 3-step guide. The Today screen shows this week (✓ done, R rest) and today's workout with one Start button.
 - **Choose before you start.** The Today screen shows the scheduled workout, and you can pick any other day of the plan (or a freestyle workout) before tapping **Start**.
-- **Live logging.** Log weight and reps per set, tick sets as done, add sets or drop sets, and mark sets as warm-up, working, drop set or to failure. You can also add exercises mid-workout, write notes, and edit the date to log past workouts.
+- **Live logging.** Log weight and reps per set, tick sets as done, add sets or drop sets, and mark sets as warm-up, working, drop set or to failure. You can also add exercises mid-workout, write notes, and edit the date to log past workouts. A progress bar shows sets done, and a rest timer starts each time you tick a set.
 - **Progressive overload.** Each planned exercise has a progression rule. The app uses your last session to suggest today's target:
   - *Fixed*: always use the planned target.
   - *Linear overload*: if you hit every rep last time, add the weight increment.
   - *Double progression*: add reps inside a range (e.g. 8–12). Once every set reaches the top, add weight and go back to the bottom of the range.
   - *Repeat last*: copy your previous session.
 - **History.** Every workout with its sets, reps and weight, plus all-time totals (workouts, sets, reps, total weight lifted). Searchable by exercise.
-- **Progress.**
-  - *Daily*: volume, reps or sets per day (bar chart), plus a day-by-day table.
-  - *By exercise*: top weight, estimated 1RM, volume or reps per session (line chart), all-time records, and a session log.
-  - Ranges: 30 days, 90 days, 1 year, or all time.
+- **Progress by day, week, month and year.** Switch the period at the top of the Progress tab.
+  - *Overview*: how much you lifted (volume), workouts, reps and sets per period as a bar chart. A comparison card shows the last completed period vs the one before, with ▲/▼ % change. A "Strength change" list shows each exercise's estimated 1RM, first → latest in the range.
+  - *By exercise*: estimated 1RM, heaviest set, volume or reps per period. A summary shows how much it went up since the start of the range, plus all-time personal records and recent sessions.
+  - Tap or hover any bar or point to read its value.
 - **Exercise library.** Comes with common lifts. Add, edit or delete your own, grouped by muscle.
 - **Your data as JSON.** Stored on the device (AsyncStorage, which is `localStorage` on web). Export or import the whole dataset as JSON from Settings.
 - **MongoDB-ready.** Switch storage to a REST API in Settings. A reference Express + MongoDB server is in [`server/`](server/README.md).

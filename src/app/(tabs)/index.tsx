@@ -3,21 +3,38 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useData } from '../../data/DataProvider';
 import { colors, space } from '../../components/theme';
-import { Button, Card, Chip, Empty, Muted, Row, Screen, SectionHeader, Stat, Title } from '../../components/ui';
-import { addDays, formatDate, formatShortDate, todayKey, WEEKDAYS_SHORT, weekdayIndex } from '../../lib/date';
+import { Button, Card, Chip, Muted, Row, SectionHeader, Screen, Stat, Title } from '../../components/ui';
+import { addDays, formatDate, todayKey, WEEKDAYS_SHORT, weekdayIndex } from '../../lib/date';
+import { newPlan } from '../../lib/plan';
 import { lastWorkingSets, suggestTarget } from '../../lib/progression';
 import { dayTitle, planDayForDate } from '../../lib/schedule';
 import { createSession } from '../../lib/session';
 import { formatNumber, summarizeSession } from '../../lib/stats';
 
+function Step({ n, title, body }: { n: number; title: string; body: string }) {
+  return (
+    <Row style={{ alignItems: 'flex-start', marginBottom: space(3) }}>
+      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: colors.accent, fontWeight: '700' }}>{n}</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontWeight: '600', color: colors.text }}>{title}</Text>
+        <Muted>{body}</Muted>
+      </View>
+    </Row>
+  );
+}
+
 export default function TodayScreen() {
-  const { data, settings, exerciseById, saveSession } = useData();
+  const { data, settings, exerciseById, saveSession, savePlan } = useData();
   const today = todayKey();
   const plan = data.plans.find((p) => p.isActive);
   const scheduled = plan ? planDayForDate(plan, today) : null;
   const [chosenIndex, setChosenIndex] = useState<number | null>(null);
+  const [showOtherDays, setShowOtherDays] = useState(false);
   const dayIndex = chosenIndex ?? scheduled?.index ?? 0;
   const day = plan?.days[dayIndex];
+  const unit = settings.weightUnit;
 
   const inProgress = data.sessions.find((s) => !s.finishedAt);
   const doneToday = data.sessions.filter((s) => s.date === today && s.finishedAt);
@@ -34,6 +51,17 @@ export default function TodayScreen() {
     [day, data.sessions, exerciseById],
   );
 
+  // Mon–Sun of the current week.
+  const weekStart = addDays(today, -weekdayIndex(today));
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekStart, i);
+    const planned = plan ? planDayForDate(plan, date)?.day : undefined;
+    const trained = data.sessions.some((s) => s.date === date && s.finishedAt);
+    return { date, planned, trained };
+  });
+  const plannedThisWeek = week.filter((d) => d.planned && !d.planned.isRest).length;
+  const trainedThisWeek = week.filter((d) => d.trained).length;
+
   const start = async (withPlanDay: boolean) => {
     if (inProgress) {
       router.push(`/workout/${inProgress.id}`);
@@ -44,101 +72,153 @@ export default function TodayScreen() {
       sessions: data.sessions,
       plan: withPlanDay ? plan : undefined,
       day: withPlanDay ? day : undefined,
-      title: withPlanDay && plan ? dayTitle(plan, dayIndex) : 'Freestyle workout',
+      title: withPlanDay && plan ? dayTitle(plan, dayIndex) : 'Quick workout',
     });
     await saveSession(session);
     router.push(`/workout/${session.id}`);
   };
 
+  const createFirstPlan = async () => {
+    const p = { ...newPlan('weekly'), isActive: true };
+    await savePlan(p);
+    router.push(`/plan/${p.id}`);
+  };
+
   return (
     <Screen>
       <Muted>{formatDate(today)}</Muted>
-      <Title>{plan ? dayTitle(plan, scheduled?.index ?? 0) : 'Ready to train?'}</Title>
+      <Title>{!plan ? 'Welcome 👋' : scheduled?.day.isRest ? 'Rest day' : `Today: ${scheduled?.day.label || 'Workout'}`}</Title>
 
       {inProgress ? (
-        <Card style={{ borderColor: colors.accent, borderWidth: 1 }}>
-          <Text style={{ fontWeight: '600', color: colors.text }}>Workout in progress: {inProgress.title}</Text>
-          <Muted>Started {formatShortDate(inProgress.date)}</Muted>
-          <Button title="Resume workout" onPress={() => router.push(`/workout/${inProgress.id}`)} style={{ marginTop: space(3) }} />
-        </Card>
+        <Pressable onPress={() => router.push(`/workout/${inProgress.id}`)}>
+          <Card style={{ backgroundColor: colors.accent, borderColor: colors.accent }}>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>▶ Workout in progress</Text>
+            <Text style={{ color: '#fff', opacity: 0.9, marginTop: 2 }}>
+              {inProgress.title} · {summarizeSession(inProgress).sets} sets done — tap to continue
+            </Text>
+          </Card>
+        </Pressable>
       ) : null}
 
       {!plan ? (
-        <Empty
-          title="No active plan"
-          body="Create a weekly or rotating plan and mark it active — or just start a freestyle workout."
-          action={<Button title="Create a plan" onPress={() => router.push('/plans')} />}
-        />
+        <Card>
+          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: space(3) }}>Get started in 3 steps</Text>
+          <Step n={1} title="Create your plan" body="Pick a workout or a rest day for each day of the week." />
+          <Step n={2} title="Add exercises to each day" body="Set the sets, reps and weight you're aiming for." />
+          <Step n={3} title="Come back here and tap Start" body="Log each set. Next time the app suggests how much to lift." />
+          <Button title="Create my weekly plan" onPress={createFirstPlan} />
+          <Button title="Or just log a quick workout" variant="ghost" onPress={() => start(false)} style={{ marginTop: space(2) }} />
+        </Card>
       ) : (
         <>
-          <SectionHeader>Choose today's workout</SectionHeader>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-            {plan.days.map((d, i) => (
-              <Chip
-                key={d.id}
-                label={`${plan.mode === 'weekly' ? WEEKDAYS_SHORT[i] : `D${i + 1}`} · ${d.isRest ? 'Rest' : d.label || 'Workout'}${i === scheduled?.index ? ' ★' : ''}`}
-                selected={i === dayIndex}
-                color={d.isRest ? colors.rest : colors.accent}
-                onPress={() => setChosenIndex(i)}
-              />
-            ))}
-          </View>
-          <Muted style={{ marginBottom: space(3) }}>★ = scheduled for today. Pick another day to swap workouts.</Muted>
+          {/* This week at a glance */}
+          <Card>
+            <Row style={{ justifyContent: 'space-between', marginBottom: space(3) }}>
+              <Text style={{ fontWeight: '700', color: colors.text }}>This week</Text>
+              <Muted>
+                {trainedThisWeek} of {plannedThisWeek} workouts done
+              </Muted>
+            </Row>
+            <Row style={{ justifyContent: 'space-between', gap: 0 }}>
+              {week.map(({ date, planned, trained }, i) => {
+                const isToday = date === today;
+                const rest = planned?.isRest;
+                return (
+                  <View key={date} style={{ alignItems: 'center', flex: 1 }}>
+                    <Text style={{ fontSize: 11, color: isToday ? colors.accent : colors.textMuted, fontWeight: isToday ? '700' : '500' }}>
+                      {WEEKDAYS_SHORT[i]}
+                    </Text>
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        marginVertical: 4,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: trained ? colors.success : rest ? colors.restSoft : colors.bg,
+                        borderWidth: isToday ? 2 : 0,
+                        borderColor: colors.accent,
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: trained ? '#fff' : rest ? colors.rest : colors.textMuted }}>
+                        {trained ? '✓' : rest ? 'R' : '•'}
+                      </Text>
+                    </View>
+                    <Text numberOfLines={1} style={{ fontSize: 10, color: colors.textSecondary, maxWidth: 44 }}>
+                      {planned ? (planned.isRest ? 'Rest' : planned.label || 'Workout') : ''}
+                    </Text>
+                  </View>
+                );
+              })}
+            </Row>
+          </Card>
 
+          {/* Today's workout */}
           {day?.isRest ? (
             <Card style={{ backgroundColor: colors.restSoft, borderColor: colors.restSoft }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.rest }}>Rest day 😴</Text>
-              <Muted>Recover well. You can still log a freestyle session if you want.</Muted>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.rest }}>Rest & recover 😴</Text>
+              <Muted>No workout planned today. Want to train anyway? Pick a workout below.</Muted>
             </Card>
           ) : (
             <Card>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>{plan ? dayTitle(plan, dayIndex) : ''}</Text>
+              {chosenIndex !== null && chosenIndex !== scheduled?.index ? <Muted>Swapped in for today</Muted> : null}
               {preview.length === 0 ? (
-                <Muted>This day has no exercises yet. Edit the plan to add some.</Muted>
+                <View style={{ marginVertical: space(3) }}>
+                  <Muted>No exercises in this workout yet.</Muted>
+                  <Button title="Add exercises to this day" variant="secondary" small onPress={() => router.push(`/plan/${plan!.id}?day=${dayIndex}`)} style={{ marginTop: space(2), alignSelf: 'flex-start' }} />
+                </View>
               ) : (
-                preview.map(({ pe, name, s }) => (
-                  <View key={pe.id} style={{ paddingVertical: space(2), borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                    <Row style={{ justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, flexShrink: 1 }}>{name}</Text>
-                      <Text style={{ color: colors.text, fontVariant: ['tabular-nums'] }}>
-                        {s.sets} × {s.reps} @ {s.weight} {settings.weightUnit}
-                      </Text>
-                    </Row>
-                    <Muted>{s.reason}</Muted>
-                  </View>
-                ))
+                <View style={{ marginTop: space(2) }}>
+                  {preview.map(({ pe, name, s }) => (
+                    <View key={pe.id} style={{ paddingVertical: space(2), borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <Row style={{ justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, flexShrink: 1 }}>{name}</Text>
+                        <Text style={{ color: colors.text, fontVariant: ['tabular-nums'], fontWeight: '600' }}>
+                          {s.sets} × {s.reps} @ {s.weight} {unit}
+                        </Text>
+                      </Row>
+                      <Muted>{s.reason}</Muted>
+                    </View>
+                  ))}
+                </View>
               )}
               <Button
-                title={inProgress ? 'Resume current workout' : 'Start workout'}
+                title={inProgress ? 'Continue current workout' : '▶  Start workout'}
                 onPress={() => start(true)}
-                style={{ marginTop: space(4) }}
+                disabled={!inProgress && preview.length === 0}
+                style={{ marginTop: space(4), paddingVertical: space(4) }}
               />
             </Card>
           )}
 
-          <SectionHeader>Next 7 days</SectionHeader>
-          <Card>
-            {Array.from({ length: 7 }, (_, i) => addDays(today, i + 1)).map((date) => {
-              const r = planDayForDate(plan, date);
-              return (
-                <Row key={date} style={{ justifyContent: 'space-between', paddingVertical: space(1.5) }}>
-                  <Text style={{ color: colors.textSecondary, width: 90 }}>
-                    {WEEKDAYS_SHORT[weekdayIndex(date)]} {formatShortDate(date)}
-                  </Text>
-                  <Text style={{ color: r?.day.isRest ? colors.rest : colors.text, fontWeight: '500' }}>
-                    {r ? (r.day.isRest ? 'Rest' : r.day.label || 'Workout') : '—'}
-                  </Text>
-                </Row>
-              );
-            })}
-          </Card>
+          <Pressable onPress={() => setShowOtherDays((v) => !v)} style={{ paddingVertical: space(2) }}>
+            <Text style={{ color: colors.accent, fontWeight: '600' }}>
+              {showOtherDays ? '▾' : '▸'} Do a different workout today
+            </Text>
+          </Pressable>
+          {showOtherDays ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+              {plan.days.map((d, i) =>
+                d.isRest ? null : (
+                  <Chip
+                    key={d.id}
+                    label={`${plan.mode === 'weekly' ? WEEKDAYS_SHORT[i] : `Day ${i + 1}`}: ${d.label || 'Workout'}`}
+                    selected={i === dayIndex}
+                    onPress={() => setChosenIndex(i)}
+                  />
+                ),
+              )}
+              <Chip label="Quick workout (empty)" onPress={() => start(false)} />
+            </View>
+          ) : null}
         </>
       )}
 
-      <Button title="Start freestyle workout" variant="secondary" onPress={() => start(false)} style={{ marginTop: space(3) }} />
-
       {doneToday.length > 0 ? (
         <>
-          <SectionHeader>Completed today</SectionHeader>
+          <SectionHeader>Done today ✅</SectionHeader>
           {doneToday.map((s) => {
             const sum = summarizeSession(s);
             return (
@@ -148,7 +228,7 @@ export default function TodayScreen() {
                   <Row>
                     <Stat label="Sets" value={String(sum.sets)} />
                     <Stat label="Reps" value={String(sum.reps)} />
-                    <Stat label={`Volume (${settings.weightUnit})`} value={formatNumber(sum.volume)} />
+                    <Stat label={`Volume (${unit})`} value={formatNumber(sum.volume)} />
                   </Row>
                 </Card>
               </Pressable>

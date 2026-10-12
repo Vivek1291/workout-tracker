@@ -11,6 +11,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { formatNumber } from '../lib/stats';
 import { colors, radius, space } from './theme';
 
 export function Screen({ children, scroll = true }: { children: React.ReactNode; scroll?: boolean }) {
@@ -160,6 +161,65 @@ export function NumberInput({
   );
 }
 
+/** iOS-style segmented control. */
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <View style={styles.segmented}>
+      {options.map((o) => {
+        const selected = o.value === value;
+        return (
+          <Pressable
+            key={o.value}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            onPress={() => onChange(o.value)}
+            style={[styles.segment, selected && styles.segmentSelected]}
+          >
+            <Text style={[styles.segmentText, selected && { color: colors.text, fontWeight: '700' }]}>{o.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Up/down change badge. Arrow + text, so it never relies on color alone. */
+export function Delta({
+  diff,
+  pct,
+  unit = '',
+  higherIsBetter = true,
+  compact = false,
+}: {
+  diff: number;
+  pct: number | null;
+  unit?: string;
+  higherIsBetter?: boolean;
+  /** Show only the percentage (or the amount when there is no percentage). */
+  compact?: boolean;
+}) {
+  if (diff === 0) return <Text style={[styles.delta, { color: colors.textMuted }]}>– no change</Text>;
+  const up = diff > 0;
+  const good = up === higherIsBetter;
+  const sign = up ? '+' : '−';
+  const amount = `${sign}${formatNumber(Math.abs(diff))}${unit ? ` ${unit}` : ''}`;
+  const percent = pct !== null ? `${sign}${Math.abs(pct)}%` : null;
+  const text = compact ? (percent ?? amount) : `${amount}${percent ? ` (${percent})` : ''}`;
+  return (
+    <Text style={[styles.delta, { color: good ? colors.success : colors.danger }]}>
+      {up ? '▲' : '▼'} {text}
+    </Text>
+  );
+}
+
 export function Row({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   return <View style={[styles.row, style]}>{children}</View>;
 }
@@ -248,5 +308,23 @@ export const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: space(2) },
   stat: { flex: 1, alignItems: 'center', paddingVertical: space(2) },
   statValue: { fontSize: 20, fontWeight: '700', color: colors.text, fontVariant: ['tabular-nums'] },
-  statLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  statLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 2, textAlign: 'center' },
+  segmented: {
+    flexDirection: 'row',
+    backgroundColor: '#e8e7e3',
+    borderRadius: radius.md,
+    padding: 3,
+    marginBottom: space(3),
+  },
+  segment: { flex: 1, paddingVertical: space(2), borderRadius: radius.sm + 1, alignItems: 'center' },
+  segmentSelected: {
+    backgroundColor: colors.surface,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  segmentText: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
+  delta: { fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
 });

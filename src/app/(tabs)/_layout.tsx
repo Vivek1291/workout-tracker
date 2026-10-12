@@ -5,9 +5,12 @@ import { colors } from '../../components/theme';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+/** Filled icon for the selected tab, outline otherwise. */
 const icon =
-  (name: IconName) =>
-  ({ color, size }: { color: ColorValue; size: number }) => <Ionicons name={name} color={color as string} size={size} />;
+  (name: string) =>
+  ({ color, size, focused }: { color: ColorValue; size: number; focused: boolean }) => (
+    <Ionicons name={(focused ? name : `${name}-outline`) as IconName} color={color as string} size={size} />
+  );
 
 export default function TabsLayout() {
   return (
@@ -27,11 +30,11 @@ export default function TabsLayout() {
         ),
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Today', tabBarIcon: icon('today-outline') }} />
-      <Tabs.Screen name="plans" options={{ title: 'Plans', tabBarIcon: icon('calendar-outline') }} />
-      <Tabs.Screen name="history" options={{ title: 'History', tabBarIcon: icon('time-outline') }} />
-      <Tabs.Screen name="progress" options={{ title: 'Progress', tabBarIcon: icon('trending-up-outline') }} />
-      <Tabs.Screen name="exercises" options={{ title: 'Exercises', tabBarIcon: icon('barbell-outline') }} />
+      <Tabs.Screen name="index" options={{ title: 'Today', tabBarIcon: icon('today') }} />
+      <Tabs.Screen name="plans" options={{ title: 'Plans', tabBarIcon: icon('calendar') }} />
+      <Tabs.Screen name="history" options={{ title: 'History', tabBarIcon: icon('time') }} />
+      <Tabs.Screen name="progress" options={{ title: 'Progress', tabBarIcon: icon('trending-up') }} />
+      <Tabs.Screen name="exercises" options={{ title: 'Exercises', tabBarIcon: icon('barbell') }} />
     </Tabs>
   );
 }

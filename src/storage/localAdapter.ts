@@ -84,3 +84,15 @@ export async function loadSettingsRaw(): Promise<unknown> {
 export async function saveSettingsRaw(settings: unknown): Promise<void> {
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
+
+const DATA_VERSION_KEY = `${KEY_PREFIX}dataVersion`;
+
+/** Which built-in content upgrade this device has applied (null = never recorded). */
+export async function loadDataVersion(): Promise<number | null> {
+  const v = await AsyncStorage.getItem(DATA_VERSION_KEY);
+  return v ? Number(v) : null;
+}
+
+export async function saveDataVersion(version: number): Promise<void> {
+  await AsyncStorage.setItem(DATA_VERSION_KEY, String(version));
+}

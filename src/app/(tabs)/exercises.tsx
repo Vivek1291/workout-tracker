@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useData } from '../../data/DataProvider';
 import { confirm } from '../../components/confirm';
+import { MuscleMap, PRIMARY, SECONDARY } from '../../components/MuscleMap';
 import { colors, space } from '../../components/theme';
 import { Button, Card, Chip, Field, Muted, Row, Screen, SectionHeader } from '../../components/ui';
 import { newId, nowIso } from '../../lib/id';
@@ -12,6 +13,9 @@ function ExerciseForm({ initial, onDone }: { initial?: Exercise; onDone: () => v
   const [name, setName] = useState(initial?.name ?? '');
   const [group, setGroup] = useState<MuscleGroup>(initial?.muscleGroup ?? 'Chest');
   const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [primary, setPrimary] = useState(initial?.primaryMuscle ?? '');
+  const [secondary, setSecondary] = useState(initial?.secondaryMuscles ?? '');
+  const [measure, setMeasure] = useState<'reps' | 'time'>(initial?.measure ?? 'reps');
 
   const save = async () => {
     if (!name.trim()) return;
@@ -22,6 +26,9 @@ function ExerciseForm({ initial, onDone }: { initial?: Exercise; onDone: () => v
       updatedAt: now,
       name: name.trim(),
       muscleGroup: group,
+      primaryMuscle: primary.trim() || undefined,
+      secondaryMuscles: secondary.trim() || undefined,
+      measure: measure === 'time' ? 'time' : undefined,
       notes: notes.trim() || undefined,
     });
     onDone();
@@ -35,6 +42,20 @@ function ExerciseForm({ initial, onDone }: { initial?: Exercise; onDone: () => v
         {MUSCLE_GROUPS.map((g) => (
           <Chip key={g} label={g} selected={group === g} onPress={() => setGroup(g)} />
         ))}
+      </View>
+      <Row style={{ alignItems: 'flex-start' }}>
+        <View style={{ flex: 1 }}>
+          <Field label="Primary muscle" value={primary} onChangeText={setPrimary} placeholder="e.g. Upper chest" />
+          <Field label="Secondary muscles" value={secondary} onChangeText={setSecondary} placeholder="e.g. Triceps, front delts" />
+        </View>
+        <View style={{ alignItems: 'center', paddingTop: space(4) }}>
+          <MuscleMap exercise={{ name: name || 'exercise', muscleGroup: group, primaryMuscle: primary, secondaryMuscles: secondary }} size={110} legend />
+        </View>
+      </Row>
+      <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: space(1) }}>Track</Text>
+      <View style={{ flexDirection: 'row' }}>
+        <Chip label="Reps" selected={measure === 'reps'} onPress={() => setMeasure('reps')} />
+        <Chip label="Time (seconds)" selected={measure === 'time'} onPress={() => setMeasure('time')} />
       </View>
       <Field label="Notes" value={notes} onChangeText={setNotes} placeholder="Cues, machine settings…" />
       <Row>
@@ -83,6 +104,10 @@ export default function ExercisesScreen() {
         <Button title="+ New exercise" onPress={() => setEditing('new')} style={{ marginBottom: space(3) }} />
       )}
       <Field placeholder="Search exercises…" value={query} onChangeText={setQuery} />
+      <Muted style={{ marginBottom: space(1) }}>
+        <Text style={{ color: PRIMARY, fontWeight: '700' }}>●</Text> primary muscle{'   '}
+        <Text style={{ color: SECONDARY, fontWeight: '700' }}>●</Text> secondary muscles
+      </Muted>
       {grouped.map(({ group, items }) => (
         <View key={group}>
           <SectionHeader>{group}</SectionHeader>
@@ -91,18 +116,32 @@ export default function ExercisesScreen() {
               <ExerciseForm key={ex.id} initial={ex} onDone={() => setEditing(null)} />
             ) : (
               <Card key={ex.id} style={{ paddingVertical: space(3) }}>
-                <Row style={{ justifyContent: 'space-between' }}>
-                  <View style={{ flexShrink: 1 }}>
+                <Row style={{ alignItems: 'flex-start' }}>
+                  <MuscleMap exercise={ex} size={64} />
+                  <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{ex.name}</Text>
-                    <Muted>
+                    {ex.primaryMuscle ? (
+                      <Text style={{ fontSize: 13, color: colors.text, marginTop: 2 }}>
+                        <Text style={{ color: PRIMARY, fontWeight: '700' }}>● </Text>
+                        {ex.primaryMuscle}
+                      </Text>
+                    ) : null}
+                    {ex.secondaryMuscles ? (
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                        <Text style={{ color: SECONDARY, fontWeight: '700' }}>● </Text>
+                        {ex.secondaryMuscles}
+                      </Text>
+                    ) : null}
+                    <Muted style={{ marginTop: 2 }}>
                       {usage.get(ex.id) ? `Logged in ${usage.get(ex.id)} workout(s)` : 'Not logged yet'}
+                      {ex.measure === 'time' ? ' · timed' : ''}
                       {ex.notes ? ` · ${ex.notes}` : ''}
                     </Muted>
+                    <Row style={{ marginTop: space(1) }}>
+                      <Button title="Edit" small variant="ghost" onPress={() => setEditing(ex.id)} style={{ paddingHorizontal: 0 }} />
+                      <Button title="Delete" small variant="ghost" onPress={() => remove(ex)} />
+                    </Row>
                   </View>
-                  <Row>
-                    <Button title="Edit" small variant="ghost" onPress={() => setEditing(ex.id)} />
-                    <Button title="Delete" small variant="ghost" onPress={() => remove(ex)} />
-                  </Row>
                 </Row>
               </Card>
             ),

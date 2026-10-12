@@ -61,7 +61,11 @@ export function suggestTarget(planned: PlannedExercise, last: SetLog[] | null): 
     reason: 'Planned target',
   };
   if (!last || last.length === 0 || rule.type === 'none') {
-    return { ...base, reason: last ? 'Planned target' : 'First time — planned target' };
+    if (last) return { ...base, reason: 'Planned target' };
+    return {
+      ...base,
+      reason: base.weight > 0 ? 'First time — planned target' : 'First time — pick a weight you can do for the full range',
+    };
   }
 
   const lastWeight = Math.max(...last.map((s) => s.weight));
@@ -89,6 +93,14 @@ export function suggestTarget(planned: PlannedExercise, last: SetLog[] | null): 
     }
     case 'double': {
       const allTop = topSets.length >= planned.targetSets && minReps >= rule.repMax;
+      if (allTop && rule.weightIncrement <= 0) {
+        return {
+          sets: planned.targetSets,
+          reps: rule.repMax,
+          weight: lastWeight,
+          reason: `Top of range (${rule.repMax}) reached — add weight or a harder variation`,
+        };
+      }
       if (allTop) {
         return {
           sets: planned.targetSets,

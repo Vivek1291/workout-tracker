@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { useData } from '../../data/DataProvider';
 import { ExercisePicker } from '../../components/ExercisePicker';
+import { MuscleMap } from '../../components/MuscleMap';
 import { confirm } from '../../components/confirm';
 import { colors, space } from '../../components/theme';
 import { Button, Card, Chip, Empty, Field, Muted, NumberInput, Row, Screen, SectionHeader } from '../../components/ui';
@@ -155,6 +156,12 @@ export default function PlanEditor() {
                 onChangeText={(label) => updateDay(day.id, (d) => ({ ...d, label }))}
                 style={{ marginTop: space(2) }}
               />
+              <Field
+                label="Focus (optional)"
+                value={day.focus ?? ''}
+                placeholder="e.g. Chest • Shoulders • Triceps"
+                onChangeText={(focus) => updateDay(day.id, (d) => ({ ...d, focus: focus || undefined }))}
+              />
               {day.exercises.map((pe, ei) => {
                 const rule = pe.progression ?? DEFAULT_PROGRESSION;
                 return (
@@ -163,9 +170,15 @@ export default function PlanEditor() {
                     style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: space(3) }}
                   >
                     <Row style={{ justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, flexShrink: 1 }}>
-                        {ei + 1}. {exerciseById(pe.exerciseId)?.name ?? 'Deleted exercise'}
-                      </Text>
+                      <Row style={{ flexShrink: 1 }}>
+                        <MuscleMap exercise={exerciseById(pe.exerciseId)} size={44} />
+                        <View style={{ flexShrink: 1 }}>
+                          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>
+                            {ei + 1}. {exerciseById(pe.exerciseId)?.name ?? 'Deleted exercise'}
+                          </Text>
+                          <Muted>{exerciseById(pe.exerciseId)?.primaryMuscle ?? ''}</Muted>
+                        </View>
+                      </Row>
                       <Row>
                         <Button title="↑" small variant="ghost" onPress={() => updateDay(day.id, (d) => ({ ...d, exercises: move(d.exercises, ei, ei - 1) }))} />
                         <Button title="↓" small variant="ghost" onPress={() => updateDay(day.id, (d) => ({ ...d, exercises: move(d.exercises, ei, ei + 1) }))} />
@@ -210,6 +223,12 @@ export default function PlanEditor() {
                         ) : null}
                       </Row>
                     ) : null}
+                    <Field
+                      placeholder="Note (e.g. per side, rope attachment)"
+                      value={pe.notes ?? ''}
+                      onChangeText={(notes) => updateExercise(day.id, pe.id, (e) => ({ ...e, notes: notes || undefined }))}
+                      style={{ marginTop: space(2), fontSize: 13, paddingVertical: space(2) }}
+                    />
                   </View>
                 );
               })}

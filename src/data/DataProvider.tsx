@@ -1,9 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppData, BaseDoc, CollectionName, DEFAULT_SETTINGS, Exercise, Settings, WorkoutPlan, WorkoutSession } from '../types';
 import { createAdapter, EMPTY_DATA, normalizeAppData, StorageAdapter } from '../storage';
-import { loadSettingsRaw, saveSettingsRaw } from '../storage/localAdapter';
+import { loadDataVersion, loadSettingsRaw, saveDataVersion, saveSettingsRaw } from '../storage/localAdapter';
 import { nowIso } from '../lib/id';
-import { defaultExercises } from './seed';
+import { DATA_VERSION, upgradeData } from './migrations';
 
 interface DataContextValue {
   ready: boolean;
@@ -55,9 +55,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const loadFrom = useCallback(async (adapter: StorageAdapter) => {
     let loaded = await adapter.loadAll();
     const isEmpty = loaded.exercises.length === 0 && loaded.plans.length === 0 && loaded.sessions.length === 0;
-    if (isEmpty) {
-      loaded = { ...loaded, exercises: defaultExercises() };
+    // Existing data without a recorded version came from the first app release.
+    const version = isEmpty ? 0 : ((await loadDataVersion()) ?? 1);
+    if (version < DATA_VERSION) {
+      loaded = upgradeData(loaded, version);
       await adapter.replaceAll(loaded);
+      await saveDataVersion(DATA_VERSION);
     }
     adapterRef.current = adapter;
     setData(loaded);

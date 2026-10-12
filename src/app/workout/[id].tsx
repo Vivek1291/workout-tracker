@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useData } from '../../data/DataProvider';
 import { ExercisePicker } from '../../components/ExercisePicker';
+import { MuscleMap } from '../../components/MuscleMap';
 import { confirm } from '../../components/confirm';
 import { colors, radius, space } from '../../components/theme';
 import { Button, Card, Empty, Field, Muted, NumberInput, Row, Screen } from '../../components/ui';
@@ -96,6 +97,8 @@ export default function WorkoutScreen() {
   };
 
   const sum = summarizeSession(session);
+  const plan = data.plans.find((p) => p.id === session.planId);
+  const plannedById = new Map((plan?.days ?? []).flatMap((d) => d.exercises).map((pe) => [pe.id, pe]));
   const totalSets = session.entries.reduce((a, e) => a + e.sets.length, 0);
   const doneSets = session.entries.reduce((a, e) => a + e.sets.filter((x) => x.completed).length, 0);
   const unit = settings.weightUnit;
@@ -165,12 +168,18 @@ export default function WorkoutScreen() {
       {session.entries.map((entry, ei) => {
         const ex = exerciseById(entry.exerciseId);
         const last = lastWorkingSets(data.sessions, entry.exerciseId, session.id);
+        const planned = plannedById.get(entry.plannedExerciseId ?? '');
+        const timed = ex?.measure === 'time';
         return (
           <Card key={entry.id}>
             <Row style={{ justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, flexShrink: 1 }}>
-                {ex?.name ?? 'Deleted exercise'}
-              </Text>
+              <Row style={{ flexShrink: 1 }}>
+                <MuscleMap exercise={ex} size={52} />
+                <View style={{ flexShrink: 1 }}>
+                  <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>{ex?.name ?? 'Deleted exercise'}</Text>
+                  {ex?.primaryMuscle ? <Muted>{ex.primaryMuscle}</Muted> : null}
+                </View>
+              </Row>
               <Row>
                 <Button
                   title="↑"
@@ -196,9 +205,19 @@ export default function WorkoutScreen() {
                 />
               </Row>
             </Row>
+            {planned ? (
+              <Text style={{ fontSize: 13, color: colors.text, marginTop: space(2) }}>
+                🎯 Target: {planned.targetSets} ×{' '}
+                {planned.progression?.type === 'double' && planned.progression.repMin !== planned.progression.repMax
+                  ? `${planned.progression.repMin}–${planned.progression.repMax}`
+                  : planned.targetReps}{' '}
+                {timed ? 'seconds' : 'reps'}
+                {planned.notes ? ` · ${planned.notes}` : ''}
+              </Text>
+            ) : null}
             <Muted>
               {last
-                ? `Last time: ${last.map((s) => `${s.reps}×${s.weight}`).join(', ')} ${unit}`
+                ? `Last time: ${last.map((s) => `${s.reps}${timed ? 's' : ''}×${s.weight}`).join(', ')} ${unit}`
                 : 'First time logging this exercise'}
             </Muted>
 
@@ -206,7 +225,7 @@ export default function WorkoutScreen() {
               <Text style={[headerCell, { width: 28 }]}>#</Text>
               <Text style={[headerCell, { width: 44 }]}>Type</Text>
               <Text style={[headerCell, { flex: 1 }]}>Weight ({unit})</Text>
-              <Text style={[headerCell, { flex: 1 }]}>Reps</Text>
+              <Text style={[headerCell, { flex: 1 }]}>{timed ? 'Seconds' : 'Reps'}</Text>
               <Text style={[headerCell, { width: 40 }]}>Done</Text>
               <View style={{ width: 28 }} />
             </Row>

@@ -6,10 +6,22 @@ import { colors, space } from '../../components/theme';
 import { Button, Card, Chip, Muted, Row, SectionHeader, Screen, Stat, Title } from '../../components/ui';
 import { addDays, formatDate, todayKey, WEEKDAYS_SHORT, weekdayIndex } from '../../lib/date';
 import { newPlan } from '../../lib/plan';
-import { lastWorkingSets, suggestTarget } from '../../lib/progression';
+import { lastWorkingSets, Suggestion, suggestTarget } from '../../lib/progression';
+import { MuscleMap } from '../../components/MuscleMap';
+import { PlannedExercise } from '../../types';
 import { dayTitle, planDayForDate } from '../../lib/schedule';
 import { createSession } from '../../lib/session';
 import { formatNumber, summarizeSession } from '../../lib/stats';
+
+/** "3 × 8–10 reps · 40 kg", or "3 × 20–40 s" for timed holds. */
+function targetText(pe: PlannedExercise, s: Suggestion, timed: boolean, unit: string): string {
+  const rule = pe.progression;
+  const isRange = rule?.type === 'double' && rule.repMin !== rule.repMax;
+  // Before any history, show the planned range; afterwards show today's suggested reps.
+  const reps = isRange && s.reason.startsWith('First time') ? `${rule.repMin}–${rule.repMax}` : String(s.reps);
+  const weight = s.weight > 0 ? ` @ ${s.weight} ${unit}` : '';
+  return `${s.sets} × ${reps} ${timed ? 's' : 'reps'}${weight}`;
+}
 
 function Step({ n, title, body }: { n: number; title: string; body: string }) {
   return (
@@ -44,6 +56,7 @@ export default function TodayScreen() {
       day && !day.isRest
         ? day.exercises.map((pe) => ({
             pe,
+            ex: exerciseById(pe.exerciseId),
             name: exerciseById(pe.exerciseId)?.name ?? 'Deleted exercise',
             s: suggestTarget(pe, lastWorkingSets(data.sessions, pe.exerciseId)),
           }))
@@ -163,6 +176,7 @@ export default function TodayScreen() {
           ) : (
             <Card>
               <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>{plan ? dayTitle(plan, dayIndex) : ''}</Text>
+              {day?.focus ? <Muted>{day.focus}</Muted> : null}
               {chosenIndex !== null && chosenIndex !== scheduled?.index ? <Muted>Swapped in for today</Muted> : null}
               {preview.length === 0 ? (
                 <View style={{ marginVertical: space(3) }}>
@@ -171,16 +185,22 @@ export default function TodayScreen() {
                 </View>
               ) : (
                 <View style={{ marginTop: space(2) }}>
-                  {preview.map(({ pe, name, s }) => (
-                    <View key={pe.id} style={{ paddingVertical: space(2), borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                      <Row style={{ justifyContent: 'space-between' }}>
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, flexShrink: 1 }}>{name}</Text>
-                        <Text style={{ color: colors.text, fontVariant: ['tabular-nums'], fontWeight: '600' }}>
-                          {s.sets} × {s.reps} @ {s.weight} {unit}
+                  {preview.map(({ pe, ex, name, s }, i) => (
+                    <Row key={pe.id} style={{ paddingVertical: space(2), borderBottomWidth: 1, borderBottomColor: colors.border, alignItems: 'center' }}>
+                      <MuscleMap exercise={ex} size={44} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>
+                          {i + 1}. {name}
                         </Text>
-                      </Row>
-                      <Muted>{s.reason}</Muted>
-                    </View>
+                        <Text style={{ color: colors.text, fontVariant: ['tabular-nums'] }}>
+                          {targetText(pe, s, ex?.measure === 'time', unit)}
+                        </Text>
+                        <Muted>
+                          {pe.notes ? `${pe.notes} · ` : ''}
+                          {s.reason}
+                        </Muted>
+                      </View>
+                    </Row>
                   ))}
                 </View>
               )}

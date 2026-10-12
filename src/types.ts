@@ -21,6 +21,7 @@ export type MuscleGroup =
   | 'Legs'
   | 'Glutes'
   | 'Core'
+  | 'Forearms'
   | 'Cardio'
   | 'Full Body'
   | 'Other';
@@ -34,6 +35,7 @@ export const MUSCLE_GROUPS: MuscleGroup[] = [
   'Legs',
   'Glutes',
   'Core',
+  'Forearms',
   'Cardio',
   'Full Body',
   'Other',
@@ -42,6 +44,10 @@ export const MUSCLE_GROUPS: MuscleGroup[] = [
 export interface Exercise extends BaseDoc {
   name: string;
   muscleGroup: MuscleGroup;
+  primaryMuscle?: string; // e.g. "Upper chest"
+  secondaryMuscles?: string; // e.g. "Triceps, front delts"
+  /** 'time' = the reps field holds seconds (planks, hangs). */
+  measure?: 'reps' | 'time';
   notes?: string;
 }
 
@@ -74,6 +80,7 @@ export interface PlannedExercise {
 export interface PlanDay {
   id: string;
   label: string; // e.g. "Push", "Legs", "Rest"
+  focus?: string; // e.g. "Chest • Shoulders • Triceps"
   isRest: boolean;
   exercises: PlannedExercise[];
 }

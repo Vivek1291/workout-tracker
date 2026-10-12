@@ -8,6 +8,7 @@ import { Button, Card, Empty, Muted, Row, Screen, SectionHeader } from '../../co
 import { WEEKDAYS_SHORT } from '../../lib/date';
 import { newId, nowIso } from '../../lib/id';
 import { newPlan } from '../../lib/plan';
+import { buildPplPlan } from '../../data/templates';
 import { PlanMode, WorkoutPlan } from '../../types';
 
 export default function PlansScreen() {
@@ -40,6 +41,18 @@ export default function PlansScreen() {
         <Button title="+ Weekly plan" onPress={() => create('weekly')} style={{ flex: 1 }} />
         <Button title="+ Rotation (N-day)" variant="secondary" onPress={() => create('cycle')} style={{ flex: 1 }} />
       </Row>
+      <Button
+        title="+ Add 6-day Push / Pull / Legs template"
+        variant="secondary"
+        onPress={async () => {
+          const plan = buildPplPlan(data.exercises);
+          if (data.plans.some((p) => p.id === plan.id)) plan.id = newId();
+          plan.isActive = !data.plans.some((p) => p.isActive);
+          await savePlan(plan);
+          router.push(`/plan/${plan.id}`);
+        }}
+        style={{ marginBottom: space(2) }}
+      />
       <Muted>
         Weekly plans map workouts to Mon–Sun. Rotations (e.g. Push / Pull / Legs / Rest) repeat every N days from a start
         date. Both repeat forever.

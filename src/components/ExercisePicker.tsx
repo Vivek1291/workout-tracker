@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useData } from '../data/DataProvider';
 import { newId, nowIso } from '../lib/id';
 import { MUSCLE_GROUPS, MuscleGroup } from '../types';
+import { MuscleMap } from './MuscleMap';
 import { colors, space } from './theme';
 import { Button, Chip, Field, Muted, styles } from './ui';
 
@@ -74,14 +75,19 @@ export function ExercisePicker({
               <Pressable
                 onPress={() => pick(item.id)}
                 style={({ pressed }) => ({
-                  paddingVertical: space(3),
+                  paddingVertical: space(2),
                   borderBottomWidth: 1,
                   borderBottomColor: colors.border,
                   opacity: pressed ? 0.6 : 1,
                 })}
               >
-                <Text style={{ fontSize: 16, color: colors.text }}>{item.name}</Text>
-                <Muted>{item.muscleGroup}</Muted>
+                <View style={[styles.row, { gap: space(3) }]}>
+                  <MuscleMap exercise={item} size={48} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 16, color: colors.text }}>{item.name}</Text>
+                    <Muted>{item.primaryMuscle ?? item.muscleGroup}</Muted>
+                  </View>
+                </View>
               </Pressable>
             )}
           />

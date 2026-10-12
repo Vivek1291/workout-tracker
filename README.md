@@ -35,7 +35,28 @@ npm run ios      # iOS simulator (needs macOS + Xcode), or scan the QR code with
 npm start        # dev server; choose the platform from the menu
 ```
 
-Build a real iOS app with EAS (no Xcode required): `npx eas-cli@latest build -p ios`.
+### On your phone (quick, no build)
+
+Install **Expo Go** from the App Store or Play Store, run `npm start` on your computer, and scan the QR code.
+Your phone and computer must be on the same Wi-Fi (or use `npx expo start --tunnel`).
+
+### Android APK
+
+APKs are built in the cloud with EAS. You need a free account at expo.dev.
+
+```bash
+npx eas-cli@latest login
+npx eas-cli@latest build -p android --profile preview   # produces an installable .apk
+```
+
+When the build finishes, open the link or QR code on your Android phone, download the APK and install it.
+You may need to allow installing apps from unknown sources.
+
+The `production` profile builds an `.aab` for the Play Store instead.
+
+### iOS app
+
+`npx eas-cli@latest build -p ios` (needs an Apple Developer account to install on a real iPhone).
 
 ```bash
 npm test           # unit tests for scheduling, progression and stats

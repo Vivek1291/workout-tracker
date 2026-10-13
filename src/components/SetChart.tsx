@@ -3,7 +3,7 @@ import { LayoutChangeEvent, Text, View } from 'react-native';
 import Svg, { Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { formatNumber } from '../lib/stats';
 import { SET_TYPES, SetLog } from '../types';
-import { colors, SVG_FONT } from './theme';
+import { colors, SVG_FONT, svgPress } from './theme';
 
 const HEIGHT = 150;
 const PAD = { top: 22, bottom: 34, left: 4, right: 4 };
@@ -73,7 +73,7 @@ export function SetChart({ sets, unit, timed = false, compact = false }: { sets:
                 <SvgText fontFamily={SVG_FONT} x={cx} y={height - 6} fontSize={10} fontWeight="600" fill={isWarm ? colors.textMuted : colors.textSecondary} textAnchor="middle">
                   {names[i]}
                 </SvgText>
-                <Rect x={PAD.left + slot * i} y={0} width={slot} height={height} fill="transparent" onPress={() => setActive(i === active ? null : i)} />
+                <Rect x={PAD.left + slot * i} y={0} width={slot} height={height} fill="transparent" {...svgPress(() => setActive(i === active ? null : i))} />
               </React.Fragment>
             );
           })}

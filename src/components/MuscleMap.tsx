@@ -3,14 +3,14 @@ import { Text, View } from 'react-native';
 import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 import { ExerciseMuscles, exerciseRegions, Region } from '../lib/muscles';
 import { Exercise } from '../types';
-import { colors } from './theme';
+import { colors, svgPress } from './theme';
 
 const NEUTRAL = '#dcdbd6';
 const BODY = '#ecebe7';
 export const PRIMARY = colors.accent;
 export const SECONDARY = '#a9c8ef';
 
-type Fill = (r: Region) => { fill: string; onPress?: () => void };
+type Fill = (r: Region) => { fill: string };
 
 /** Front view, drawn in a 50 × 110 box. */
 function Front({ fill }: { fill: Fill }) {
@@ -89,7 +89,7 @@ export function MuscleMap({
   const { primary, secondary } = exerciseRegions(exercise);
   const fill: Fill = (r) => ({
     fill: primary.includes(r) ? PRIMARY : secondary.includes(r) ? SECONDARY : NEUTRAL,
-    ...(onPressRegion ? { onPress: () => onPressRegion(r) } : {}),
+    ...(onPressRegion ? svgPress(() => onPressRegion(r)) : {}),
   });
   return (
     <View accessibilityLabel={`Muscles worked by ${exercise.name}`}>

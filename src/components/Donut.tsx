@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
 import { formatNumber } from '../lib/stats';
-import { colors, SVG_FONT } from './theme';
+import { colors, SVG_FONT, svgPress } from './theme';
 
 /** Categorical palette (fixed order, never cycled); slices past the 7th fold into "Other". */
 export const CATEGORICAL = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6'];
@@ -62,7 +62,7 @@ export function Donut({ slices, unit, centerLabel }: { slices: Slice[]; unit: st
                   strokeWidth={active === s.key ? stroke + 6 : stroke}
                   fill="none"
                   opacity={active && active !== s.key ? 0.35 : 1}
-                  onPress={() => setActive(active === s.key ? null : s.key)}
+                  {...svgPress(() => setActive(active === s.key ? null : s.key))}
                 />
               );
             })

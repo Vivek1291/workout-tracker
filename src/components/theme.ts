@@ -22,3 +22,13 @@ export const space = (n: number) => n * 4;
 
 /** SVG text falls back to a serif font on web; use the system sans-serif everywhere. */
 export const SVG_FONT = Platform.OS === 'web' ? 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif' : undefined;
+
+/**
+ * Tap handler props for react-native-svg shapes.
+ * On web, `onPress` makes the library attach React Native responder props to the DOM element
+ * (React warns "Unknown event handler property"). A plain `onClick` avoids that, but the library
+ * overwrites `onClick` with `onPress` unless `onPress` is explicitly null — so web gets both.
+ */
+export function svgPress(handler: () => void): object {
+  return Platform.OS === 'web' ? { onPress: null, onClick: handler, style: { cursor: 'pointer' } } : { onPress: handler };
+}

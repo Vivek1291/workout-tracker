@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { LayoutChangeEvent, Platform, Text, View } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { formatNumber } from '../lib/stats';
-import { colors, SVG_FONT } from './theme';
+import { colors, SVG_FONT, svgPress } from './theme';
 
 export interface ChartPoint {
   label: string; // short x-axis label
@@ -117,7 +117,7 @@ export function Chart({
     if (points[i]?.value) onPressPoint?.(i);
   };
   const hoverProps = (i: number) =>
-    Platform.OS === 'web' ? ({ onPress: () => press(i), onMouseEnter: () => setActive(i) } as object) : { onPress: () => press(i) };
+    Platform.OS === 'web' ? { ...svgPress(() => press(i)), onMouseEnter: () => setActive(i) } : svgPress(() => press(i));
 
   return (
     <View onLayout={onLayout}>

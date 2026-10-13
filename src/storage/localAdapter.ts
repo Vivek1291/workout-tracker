@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppData, BaseDoc, CollectionName } from '../types';
-import { COLLECTIONS, StorageAdapter } from './types';
+import { COLLECTIONS, emptyData, StorageAdapter } from './types';
 
 const KEY_PREFIX = 'workout-tracker:';
 const key = (c: CollectionName) => `${KEY_PREFIX}${c}`;
@@ -16,7 +16,7 @@ export class LocalStorageAdapter implements StorageAdapter {
 
   async loadAll(): Promise<AppData> {
     const entries = await AsyncStorage.multiGet(COLLECTIONS.map(key));
-    const data: AppData = { version: 1, exercises: [], plans: [], sessions: [] };
+    const data: AppData = emptyData();
     entries.forEach(([, value], i) => {
       if (!value) return;
       try {

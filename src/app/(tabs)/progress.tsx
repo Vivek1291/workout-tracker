@@ -6,6 +6,7 @@ import { useData } from '../../data/DataProvider';
 import { Chart, ChartPoint } from '../../components/Chart';
 import { ExercisePicker } from '../../components/ExercisePicker';
 import { PeriodDetailsSheet } from '../../components/PeriodDetailsSheet';
+import { BodyProgress, FoodProgress } from '../../components/HealthProgress';
 import { SetChart } from '../../components/SetChart';
 import { colors, space } from '../../components/theme';
 import { Button, Card, Chip, Delta, Empty, Muted, Row, Screen, SectionHeader, Segmented, Stat } from '../../components/ui';
@@ -55,7 +56,7 @@ const COMPARE_LABEL: Record<Period, string> = {
   year: 'Last year vs the year before',
 };
 
-export default function ProgressScreen() {
+function WorkoutProgress() {
   const { data, exerciseById, settings } = useData();
   const unit = settings.weightUnit;
   const today = todayKey();
@@ -181,18 +182,18 @@ export default function ProgressScreen() {
 
   if (finished.length === 0) {
     return (
-      <Screen>
+      <>
         <Empty
           title="Your progress will show up here"
           body="Finish your first workout and you'll see charts of your volume and strength by week, month and year."
           action={<Button title="Go to Today" onPress={() => router.push('/')} />}
         />
-      </Screen>
+      </>
     );
   }
 
   return (
-    <Screen>
+    <>
       <Segmented<View_>
         options={[
           { value: 'overview', label: 'Overview' },
@@ -404,6 +405,26 @@ export default function ProgressScreen() {
         }}
       />
       <PeriodDetailsSheet period={period} bucket={detailsKey} onClose={() => setDetailsKey(null)} />
+    </>
+  );
+}
+
+type Section = 'workout' | 'food' | 'body';
+
+export default function ProgressScreen() {
+  const [section, setSection] = useState<Section>('workout');
+  return (
+    <Screen>
+      <Segmented<Section>
+        options={[
+          { value: 'workout', label: '🏋️ Workout' },
+          { value: 'food', label: '🍽️ Food' },
+          { value: 'body', label: '📏 Body' },
+        ]}
+        value={section}
+        onChange={setSection}
+      />
+      {section === 'workout' ? <WorkoutProgress /> : section === 'food' ? <FoodProgress /> : <BodyProgress />}
     </Screen>
   );
 }

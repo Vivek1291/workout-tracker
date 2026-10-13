@@ -33,6 +33,7 @@ function Root() {
         <Stack.Screen name="plan/[id]" options={{ title: 'Edit plan' }} />
         <Stack.Screen name="workout/[id]" options={{ title: 'Workout' }} />
         <Stack.Screen name="settings" options={{ title: 'Settings & data' }} />
+        <Stack.Screen name="profile" options={{ title: 'Profile' }} />
       </Stack>
       <ErrorBanner />
     </View>

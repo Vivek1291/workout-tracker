@@ -12,7 +12,7 @@ const PORT = Number(process.env.PORT || 4000);
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const DB_NAME = process.env.DB_NAME || 'workout_tracker';
 const API_KEY = process.env.API_KEY || '';
-const COLLECTIONS = ['exercises', 'plans', 'sessions'];
+const COLLECTIONS = ['exercises', 'plans', 'sessions', 'foods', 'foodLogs', 'waterLogs', 'bodyLogs', 'profile'];
 
 async function main() {
   const client = await MongoClient.connect(MONGODB_URI);

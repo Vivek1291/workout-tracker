@@ -12,6 +12,8 @@ export interface Slice {
   key: string;
   label: string;
   value: number;
+  /** Fixed colour for this slice (e.g. protein/carbs/fat); otherwise the categorical order is used. */
+  color?: string;
 }
 
 function arc(cx: number, cy: number, r: number, start: number, end: number): string {
@@ -29,7 +31,7 @@ export function Donut({ slices, unit, centerLabel }: { slices: Slice[]; unit: st
   const rest = positive.slice(CATEGORICAL.length);
   const shown = rest.length ? [...top, { key: '__other', label: `Other (${rest.length})`, value: rest.reduce((a, s) => a + s.value, 0) }] : top;
   const total = shown.reduce((a, s) => a + s.value, 0);
-  const color = (i: number, key: string) => (key === '__other' ? OTHER : CATEGORICAL[i]);
+  const color = (i: number, key: string) => (key === '__other' ? OTHER : (shown[i] as Slice).color ?? CATEGORICAL[i]);
 
   if (total <= 0) return <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: 24 }}>Nothing to show</Text>;
 

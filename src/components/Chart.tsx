@@ -37,6 +37,7 @@ export function Chart({
   selected,
   onSelect,
   onPressPoint,
+  target,
 }: {
   points: ChartPoint[];
   kind: 'line' | 'bar';
@@ -46,6 +47,8 @@ export function Chart({
   onSelect?: (index: number) => void;
   /** Called when a bar/point is tapped (e.g. to open details). */
   onPressPoint?: (index: number) => void;
+  /** Optional goal drawn as a dashed reference line (same unit as the values). */
+  target?: number;
 }) {
   const [width, setWidth] = useState(0);
   const [ownActive, setOwnActive] = useState<number | null>(null);
@@ -71,9 +74,10 @@ export function Chart({
   }
 
   const values = present.map(({ p }) => p.value as number);
-  const dataMax = Math.max(...values);
+  const dataMax = Math.max(...values, target ?? 0);
   // Bars start at zero; lines zoom in on the data so strength gains are visible.
-  const dataMin = kind === 'bar' ? 0 : Math.max(0, Math.min(...values) - (dataMax - Math.min(...values)) * 0.25 - 1);
+  const lowest = Math.min(...values, target ?? Infinity);
+  const dataMin = kind === 'bar' ? 0 : Math.max(0, lowest - (dataMax - lowest) * 0.25 - 1);
   const ticks = niceTicks(kind === 'bar' ? 0 : dataMin, dataMax);
   const yMin = ticks[0];
   const yMax = ticks[ticks.length - 1] || 1;
@@ -145,6 +149,14 @@ export function Chart({
             ) : null,
           )}
 
+          {target ? (
+            <G>
+              <Line x1={PAD.left} x2={width - PAD.right} y1={yAt(target)} y2={yAt(target)} stroke={colors.success} strokeWidth={1.5} strokeDasharray="5,4" />
+              <SvgText fontFamily={SVG_FONT} x={width - PAD.right} y={yAt(target) - 4} fontSize={10} fontWeight="600" fill={colors.success} textAnchor="end">
+                Target {formatNumber(target)}
+              </SvgText>
+            </G>
+          ) : null}
           {kind === 'bar' ? (
             points.map((p, i) => {
               if (!p.value) return null;

@@ -14,15 +14,19 @@ export interface StorageAdapter {
   replaceAll(data: AppData): Promise<void>;
 }
 
-export const EMPTY_DATA: AppData = { version: 1, exercises: [], plans: [], sessions: [] };
+export function emptyData(): AppData {
+  return { version: 1, exercises: [], plans: [], sessions: [], foods: [], foodLogs: [], waterLogs: [], bodyLogs: [], profile: [] };
+}
 
-export const COLLECTIONS: CollectionName[] = ['exercises', 'plans', 'sessions'];
+export const EMPTY_DATA: AppData = emptyData();
+
+export const COLLECTIONS: CollectionName[] = ['exercises', 'plans', 'sessions', 'foods', 'foodLogs', 'waterLogs', 'bodyLogs', 'profile'];
 
 /** Validate and normalize data coming from an import or a remote server. */
 export function normalizeAppData(raw: unknown): AppData {
   if (!raw || typeof raw !== 'object') throw new Error('Data must be a JSON object.');
   const obj = raw as Record<string, unknown>;
-  const out: AppData = { version: 1, exercises: [], plans: [], sessions: [] };
+  const out: AppData = emptyData();
   for (const c of COLLECTIONS) {
     const list = obj[c];
     if (list === undefined) continue;

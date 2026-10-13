@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Link, Tabs } from 'expo-router';
-import { ColorValue, Pressable } from 'react-native';
+import { ColorValue, Pressable, View } from 'react-native';
+import { HeaderBrand, ProfileButton } from '../../components/Brand';
 import { colors } from '../../components/theme';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -21,12 +22,16 @@ export default function TabsLayout() {
         headerStyle: { backgroundColor: colors.surface },
         headerTitleStyle: { color: colors.text },
         sceneStyle: { backgroundColor: colors.bg },
+        headerLeft: () => <HeaderBrand />,
         headerRight: () => (
-          <Link href="/settings" asChild>
-            <Pressable accessibilityLabel="Settings" style={{ paddingHorizontal: 16 }}>
-              <Ionicons name="settings-outline" size={22} color={colors.accent} />
-            </Pressable>
-          </Link>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingRight: 10 }}>
+            <ProfileButton />
+            <Link href="/settings" asChild>
+              <Pressable accessibilityLabel="Settings" style={{ paddingHorizontal: 8 }}>
+                <Ionicons name="settings-outline" size={22} color={colors.accent} />
+              </Pressable>
+            </Link>
+          </View>
         ),
       }}
     >

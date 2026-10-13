@@ -14,7 +14,7 @@ Then in the app: **Settings → Storage → Remote API (MongoDB)**
 - API key: the `API_KEY` you started the server with
 - Tap **Switch & copy my data** to upload what's on the device.
 
-Collections: `exercises`, `plans`, `sessions`. Each document keeps the app's `id` field (unique index),
+Collections: `exercises`, `plans`, `sessions`, `foods`, `foodLogs`, `waterLogs`, `bodyLogs`, `profile`. Each document keeps the app's `id` field (unique index),
 so documents look the same as in the exported JSON.
 
 | Method | Path | Body |

@@ -3,8 +3,9 @@ import { upgradeData } from '../../data/migrations';
 import { LIBRARY } from '../../data/library';
 import { PPL_PLAN_ID } from '../../data/templates';
 import { AppData } from '../../types';
+import { emptyData } from '../../storage/types';
 
-const empty: AppData = { version: 1, exercises: [], plans: [], sessions: [] };
+const empty: AppData = emptyData();
 
 describe('data upgrade', () => {
   it('seeds a fresh install with the library and an active 6-day PPL plan', () => {
@@ -43,7 +44,15 @@ describe('data upgrade', () => {
     expect(out.plans.find((p) => p.id === PPL_PLAN_ID)!.days[0].exercises[0].exerciseId).toBe('old-bench');
   });
 
+  it('adds the food library and a profile in version 3 without touching workouts', () => {
+    const v2 = upgradeData(empty, 2);
+    expect(v2.foods.length).toBeGreaterThan(100);
+    expect(v2.profile).toHaveLength(1);
+    expect(v2.exercises).toHaveLength(0);
+    expect(new Set(v2.foods.map((f) => f.id)).size).toBe(v2.foods.length);
+  });
+
   it('does nothing when already up to date', () => {
-    expect(upgradeData(empty, 2)).toEqual(empty);
+    expect(upgradeData(empty, 3)).toEqual(empty);
   });
 });

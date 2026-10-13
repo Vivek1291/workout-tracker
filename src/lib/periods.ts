@@ -44,7 +44,7 @@ function previousBucket(key: string, period: Period): string {
 }
 
 /** Contiguous bucket keys, oldest first, ending with the bucket that contains `today`. */
-export function recentBuckets(period: Period, today: string, sessions: WorkoutSession[]): string[] {
+export function recentBuckets(period: Period, today: string, sessions: { date: string }[]): string[] {
   let count: number;
   if (period === 'year') {
     const first = sessions.reduce((min, s) => (s.date < min ? s.date : min), today);

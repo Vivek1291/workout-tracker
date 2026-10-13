@@ -176,12 +176,136 @@ export const DEFAULT_SETTINGS: Settings = {
   remoteApiKey: '',
 };
 
+// ---------- Nutrition, water, body ----------
+
+export interface Nutrients {
+  kcal: number;
+  protein: number; // g
+  carbs: number; // g
+  fat: number; // g
+}
+
+export type FoodCategory =
+  | 'Grains & breads'
+  | 'Dal & legumes'
+  | 'Vegetables & curries'
+  | 'Dairy & eggs'
+  | 'Meat & fish'
+  | 'Fruits'
+  | 'Nuts & seeds'
+  | 'Snacks & sweets'
+  | 'Drinks'
+  | 'Supplements'
+  | 'Other';
+
+export const FOOD_CATEGORIES: FoodCategory[] = [
+  'Grains & breads',
+  'Dal & legumes',
+  'Vegetables & curries',
+  'Dairy & eggs',
+  'Meat & fish',
+  'Fruits',
+  'Nuts & seeds',
+  'Snacks & sweets',
+  'Drinks',
+  'Supplements',
+  'Other',
+];
+
+/** A household portion of a food, e.g. 1 bowl = 150 g, 1 piece = 40 g. */
+export interface Portion {
+  name: string; // bowl, piece, cup, tbsp, scoop, glass, slice…
+  grams: number; // grams (or ml for liquids) in one portion
+}
+
+export interface Food extends BaseDoc {
+  name: string;
+  category: FoodCategory;
+  /** Nutrition per 100 g (or per 100 ml when basis is 'ml'). */
+  per100: Nutrients;
+  basis: 'g' | 'ml';
+  portions: Portion[];
+  builtIn?: boolean;
+}
+
+export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+export const MEALS: { value: Meal; label: string; icon: string }[] = [
+  { value: 'breakfast', label: 'Breakfast', icon: '🌅' },
+  { value: 'lunch', label: 'Lunch', icon: '☀️' },
+  { value: 'dinner', label: 'Dinner', icon: '🌙' },
+  { value: 'snack', label: 'Snacks', icon: '🍎' },
+];
+
+/** One logged food. Nutrition is stored as eaten, so later edits to the food don't rewrite history. */
+export interface FoodEntry extends BaseDoc, Nutrients {
+  date: string; // YYYY-MM-DD
+  meal: Meal;
+  foodId: string;
+  foodName: string;
+  quantity: number;
+  unit: string; // g, kg, ml, l, or a portion name
+  grams: number;
+}
+
+export interface WaterEntry extends BaseDoc {
+  date: string;
+  ml: number;
+  time: string; // ISO timestamp
+}
+
+export type MeasureKey =
+  | 'weight'
+  | 'bodyFat'
+  | 'neck'
+  | 'shoulders'
+  | 'chest'
+  | 'biceps'
+  | 'forearm'
+  | 'waist'
+  | 'stomach'
+  | 'hips'
+  | 'thigh'
+  | 'calf';
+
+/** All body measurements taken on one date (one document per date). */
+export interface BodyEntry extends BaseDoc {
+  date: string;
+  values: Partial<Record<MeasureKey, number>>;
+  notes?: string;
+}
+
+export type Sex = 'male' | 'female';
+export type Activity = 'sedentary' | 'light' | 'moderate' | 'very' | 'extra';
+export type Goal = 'lose' | 'maintain' | 'gain';
+
+export interface Profile extends BaseDoc {
+  name: string;
+  sex: Sex;
+  age: number;
+  heightCm: number;
+  weightKg: number;
+  activity: Activity;
+  goal: Goal;
+  lengthUnit: 'cm' | 'in';
+  /** Manual overrides; when unset the targets are calculated. */
+  kcalTarget?: number;
+  proteinTarget?: number;
+  waterTargetMl?: number;
+}
+
+export const PROFILE_ID = 'me';
+
 /** The full dataset — this is exactly what JSON export/import reads and writes. */
 export interface AppData {
   version: 1;
   exercises: Exercise[];
   plans: WorkoutPlan[];
   sessions: WorkoutSession[];
+  foods: Food[];
+  foodLogs: FoodEntry[];
+  waterLogs: WaterEntry[];
+  bodyLogs: BodyEntry[];
+  profile: Profile[];
 }
 
-export type CollectionName = 'exercises' | 'plans' | 'sessions';
+export type CollectionName = 'exercises' | 'plans' | 'sessions' | 'foods' | 'foodLogs' | 'waterLogs' | 'bodyLogs' | 'profile';

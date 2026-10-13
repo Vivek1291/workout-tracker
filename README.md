@@ -30,6 +30,24 @@ One codebase runs as a native iPhone app and as a React web app.
 - **Set-by-set chart** (e.g. WU1 20×30 kg → S1 37 kg → S2 42 kg). It shows in each workout, in Progress → By exercise for any session you tap, and in the details popup.
 - **Exercise library.** 80 exercises across Chest, Back, Legs, Shoulders, Core, Forearms, Triceps and Biceps. Each one lists its primary and secondary muscles and has a front/back body diagram highlighting them. For each exercise you can choose the picture: the body diagram (tap muscles on it to set primary/secondary yourself) or your own photo, uploaded or taken with the camera, cropped and shrunk to a few KB. Add, edit or delete your own. Timed exercises (plank, dead hang) log seconds instead of reps.
 - **Ready-made 6-day Push / Pull / Legs plan.** Mon–Sat are Push A, Pull A, Legs A, Push B, Pull B, Legs B (each with abs), and Sunday is rest. It's loaded and made active automatically, and repeats every week. Each exercise uses double progression through its rep range, e.g. 3 × 8–10. You can add another copy from Plans → "Add 6-day Push / Pull / Legs template".
+- **Today and Progress each have Workout · Food · Body tabs** at the top. Every main page has a header with the logo, your profile (initials) and settings.
+- **Profile.** Name, sex, age, height, weight, activity and goal. Targets are calculated:
+  - Calories: Mifflin-St Jeor BMR × activity, ± the goal surplus/deficit.
+  - Protein: 1.6–2.0 g per kg.
+  - Fat: 25 % of calories, with carbs filling the rest.
+  - Water: 35 ml per kg, +500 ml on workout days.
+  - You can override any target.
+- **Food log.**
+  - ~140 built-in foods (Indian staples, eggs, meat, dairy, fruit, nuts, snacks, drinks, supplements) with approximate per-100 g values and household portions.
+  - Log by bowl / piece / glass / scoop… or g / kg / ml / l, per meal. A calorie ring and protein/carbs/fat bars show progress against your targets.
+  - You can create your own foods by entering nutrition per portion, and edit any built-in value.
+- **Water.** Quick-add glass / bottle / 1 L / custom amounts, with undo. A body drawing fills with water up to the % of your daily target.
+- **Body measurements.** Weight, body fat, chest, shoulders, biceps, forearm, neck, waist, stomach, hips, thigh and calf. A body guide shows where to measure, and each value shows its change since last time.
+- **Food & body progress.**
+  - By day, week, month or year, as bar or line charts.
+  - Calories, protein, carbs, fat and water are averaged per logged day, with your target as a dashed line. Tap a bar for a donut split by macros, foods or meals.
+  - The calories-vs-maintenance estimate (≈7,700 kcal per kg) sits next to your actual weight trend.
+  - Every measurement has its own chart, first → latest change and history.
 - **Your data as JSON.** Stored on the device (AsyncStorage, which is `localStorage` on web). Export or import the whole dataset as JSON from Settings.
 - **MongoDB-ready.** Switch storage to a REST API in Settings. A reference Express + MongoDB server is in [`server/`](server/README.md).
 
@@ -98,7 +116,7 @@ server/                   Optional Express + MongoDB API
 Every record is a plain JSON document with a string `id`, `createdAt` and `updatedAt`. The export file looks like this:
 
 ```json
-{ "version": 1, "exercises": [...], "plans": [...], "sessions": [...] }
+{ "version": 1, "exercises": [...], "plans": [...], "sessions": [...], "foods": [...], "foodLogs": [...], "waterLogs": [...], "bodyLogs": [...], "profile": [...] }
 ```
 
 Each top-level array maps to one MongoDB collection. The app only talks to persistence through the

@@ -1,4 +1,7 @@
 import { AppData, Exercise } from '../types';
+import { emptyData } from '../storage/types';
+import { defaultProfile } from '../lib/nutrition';
+import { libraryFoods } from './foods';
 import { nowIso } from '../lib/id';
 import { LIBRARY, libraryExercise, RENAMES } from './library';
 import { buildPplPlan, PPL_PLAN_ID } from './templates';
@@ -7,12 +10,14 @@ import { buildPplPlan, PPL_PLAN_ID } from './templates';
  * Bump when built-in content changes. Each step runs once per device:
  *   1 → original starter exercises
  *   2 → full exercise library + 6-day Push/Pull/Legs plan (made active)
+ *   3 → built-in food library + profile
  */
-export const DATA_VERSION = 2;
+export const DATA_VERSION = 3;
 
 export function upgradeData(input: AppData, fromVersion: number): AppData {
-  let data: AppData = JSON.parse(JSON.stringify(input));
+  let data: AppData = { ...emptyData(), ...JSON.parse(JSON.stringify(input)) };
   if (fromVersion < 2) data = addLibraryAndPpl(data);
+  if (fromVersion < 3) data = addFoodsAndProfile(data);
   return data;
 }
 
@@ -58,5 +63,12 @@ function addLibraryAndPpl(data: AppData): AppData {
     data.plans = data.plans.map((p) => (p.isActive ? { ...p, isActive: false, updatedAt: now } : p));
     data.plans.push(buildPplPlan(data.exercises));
   }
+  return data;
+}
+
+function addFoodsAndProfile(data: AppData): AppData {
+  const names = new Set(data.foods.map((f) => f.name.toLowerCase()));
+  for (const food of libraryFoods()) if (!names.has(food.name.toLowerCase())) data.foods.push(food);
+  if (data.profile.length === 0) data.profile.push(defaultProfile());
   return data;
 }

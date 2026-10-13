@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppData, BaseDoc, CollectionName, DEFAULT_SETTINGS, Exercise, Settings, WorkoutPlan, WorkoutSession } from '../types';
+import { AppData, BaseDoc, CollectionName, DEFAULT_SETTINGS, Exercise, Food, Profile, Settings, WorkoutPlan, WorkoutSession } from '../types';
+import { defaultProfile } from '../lib/nutrition';
 import { createAdapter, EMPTY_DATA, normalizeAppData, StorageAdapter } from '../storage';
 import { loadDataVersion, loadSettingsRaw, saveDataVersion, saveSettingsRaw } from '../storage/localAdapter';
 import { nowIso } from '../lib/id';
@@ -23,6 +24,12 @@ interface DataContextValue {
 
   saveSession(session: WorkoutSession): Promise<void>;
   deleteSession(id: string): Promise<void>;
+
+  /** Generic save/delete for food, water, body and profile documents. */
+  saveDoc<T extends BaseDoc>(collection: CollectionName, doc: T): Promise<void>;
+  removeDoc(collection: CollectionName, id: string): Promise<void>;
+  profile: Profile;
+  foodById(id: string): Food | undefined;
 
   importData(raw: unknown): Promise<void>;
   /** Change settings; when `copyData` is set, the current data is written to the new storage before switching. */
@@ -114,6 +121,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const exerciseIndex = useMemo(() => new Map(data.exercises.map((e) => [e.id, e])), [data.exercises]);
+  const foodIndex = useMemo(() => new Map(data.foods.map((f) => [f.id, f])), [data.foods]);
 
   const value = useMemo<DataContextValue>(
     () => ({
@@ -138,6 +146,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       saveSession: (s) => persist('sessions', s),
       deleteSession: (id) => remove('sessions', id),
 
+      saveDoc: (collection, doc) => persist(collection, doc),
+      removeDoc: (collection, id) => remove(collection, id),
+      profile: data.profile[0] ?? defaultProfile(),
+      foodById: (id) => foodIndex.get(id),
+
       importData: async (raw) => {
         const next = normalizeAppData(raw);
         await adapterRef.current.replaceAll(next);
@@ -158,7 +171,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setSettings(next);
       },
     }),
-    [ready, error, data, settings, exerciseIndex, persist, remove, loadFrom],
+    [ready, error, data, settings, exerciseIndex, foodIndex, persist, remove, loadFrom],
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

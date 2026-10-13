@@ -3,7 +3,9 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useData } from '../../data/DataProvider';
 import { colors, space } from '../../components/theme';
-import { Button, Card, Chip, Muted, Row, SectionHeader, Screen, Stat, Title } from '../../components/ui';
+import { Button, Card, Chip, Muted, Row, SectionHeader, Screen, Segmented, Stat, Title } from '../../components/ui';
+import { BodyToday } from '../../components/BodyToday';
+import { FoodToday } from '../../components/FoodToday';
 import { addDays, formatDate, todayKey, WEEKDAYS_SHORT, weekdayIndex } from '../../lib/date';
 import { newPlan } from '../../lib/plan';
 import { lastWorkingSets, Suggestion, suggestTarget } from '../../lib/progression';
@@ -37,7 +39,7 @@ function Step({ n, title, body }: { n: number; title: string; body: string }) {
   );
 }
 
-export default function TodayScreen() {
+function WorkoutToday() {
   const { data, settings, exerciseById, saveSession, savePlan } = useData();
   const today = todayKey();
   const plan = data.plans.find((p) => p.isActive);
@@ -98,7 +100,7 @@ export default function TodayScreen() {
   };
 
   return (
-    <Screen>
+    <>
       <Muted>{formatDate(today)}</Muted>
       <Title>{!plan ? 'Welcome 👋' : scheduled?.day.isRest ? 'Rest day' : `Today: ${scheduled?.day.label || 'Workout'}`}</Title>
 
@@ -256,6 +258,27 @@ export default function TodayScreen() {
           })}
         </>
       ) : null}
+    </>
+  );
+}
+
+type Section = 'workout' | 'food' | 'body';
+
+export default function TodayScreen() {
+  const [section, setSection] = useState<Section>('workout');
+  const [date, setDate] = useState(todayKey());
+  return (
+    <Screen>
+      <Segmented<Section>
+        options={[
+          { value: 'workout', label: '🏋️ Workout' },
+          { value: 'food', label: '🍽️ Food' },
+          { value: 'body', label: '📏 Body' },
+        ]}
+        value={section}
+        onChange={setSection}
+      />
+      {section === 'workout' ? <WorkoutToday /> : section === 'food' ? <FoodToday date={date} onDate={setDate} /> : <BodyToday date={date} onDate={setDate} />}
     </Screen>
   );
 }

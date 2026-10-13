@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { LayoutChangeEvent, Platform, Text, View } from 'react-native';
 import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { formatNumber } from '../lib/stats';
-import { colors } from './theme';
+import { colors, SVG_FONT } from './theme';
 
 export interface ChartPoint {
   label: string; // short x-axis label
@@ -12,6 +12,7 @@ export interface ChartPoint {
 }
 
 const HEIGHT = 210;
+const ACCENT_DARK = '#1b5cab';
 const PAD = { top: 14, right: 12, bottom: 28, left: 44 };
 
 function niceTicks(min: number, max: number): number[] {
@@ -29,13 +30,34 @@ function niceTicks(min: number, max: number): number[] {
  * Single-series chart. Tap (or hover on web) a point/bar to read its value;
  * the most recent point is selected by default. The card title names the series.
  */
-export function Chart({ points, kind, unit = '' }: { points: ChartPoint[]; kind: 'line' | 'bar'; unit?: string }) {
+export function Chart({
+  points,
+  kind,
+  unit = '',
+  selected,
+  onSelect,
+  onPressPoint,
+}: {
+  points: ChartPoint[];
+  kind: 'line' | 'bar';
+  unit?: string;
+  /** Controlled selection (index); when omitted the chart keeps its own. */
+  selected?: number | null;
+  onSelect?: (index: number) => void;
+  /** Called when a bar/point is tapped (e.g. to open details). */
+  onPressPoint?: (index: number) => void;
+}) {
   const [width, setWidth] = useState(0);
-  const [active, setActive] = useState<number | null>(null);
+  const [ownActive, setOwnActive] = useState<number | null>(null);
+  const active = selected !== undefined ? selected : ownActive;
+  const setActive = (i: number | null) => {
+    if (selected === undefined) setOwnActive(i);
+    if (i !== null) onSelect?.(i);
+  };
 
   // Reset the selection when the data set changes (new period / metric / exercise).
   const signature = points.map((p) => p.label).join('|');
-  useEffect(() => setActive(null), [signature]);
+  useEffect(() => setOwnActive(null), [signature]);
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
@@ -86,8 +108,12 @@ export function Chart({ points, kind, unit = '' }: { points: ChartPoint[]; kind:
 
   const barW = Math.max(3, Math.min(28, slot - 4));
 
+  const press = (i: number) => {
+    setActive(i);
+    if (points[i]?.value) onPressPoint?.(i);
+  };
   const hoverProps = (i: number) =>
-    Platform.OS === 'web' ? ({ onPress: () => setActive(i), onMouseEnter: () => setActive(i) } as object) : { onPress: () => setActive(i) };
+    Platform.OS === 'web' ? ({ onPress: () => press(i), onMouseEnter: () => setActive(i) } as object) : { onPress: () => press(i) };
 
   return (
     <View onLayout={onLayout}>
@@ -106,14 +132,14 @@ export function Chart({ points, kind, unit = '' }: { points: ChartPoint[]; kind:
           {ticks.map((t) => (
             <G key={t}>
               <Line x1={PAD.left} x2={width - PAD.right} y1={yAt(t)} y2={yAt(t)} stroke={colors.border} strokeWidth={1} />
-              <SvgText x={PAD.left - 6} y={yAt(t) + 4} fontSize={10} fill={colors.textMuted} textAnchor="end">
+              <SvgText fontFamily={SVG_FONT} x={PAD.left - 6} y={yAt(t) + 4} fontSize={10} fill={colors.textMuted} textAnchor="end">
                 {formatNumber(t)}
               </SvgText>
             </G>
           ))}
           {points.map((p, i) =>
             (n - 1 - i) % labelEvery === 0 ? (
-              <SvgText key={`x${i}`} x={xAt(i)} y={HEIGHT - 8} fontSize={10} fill={i === sel ? colors.text : colors.textMuted} textAnchor="middle">
+              <SvgText fontFamily={SVG_FONT} key={`x${i}`} x={xAt(i)} y={HEIGHT - 8} fontSize={10} fill={i === sel ? colors.text : colors.textMuted} textAnchor="middle">
                 {p.label}
               </SvgText>
             ) : null,
@@ -127,7 +153,8 @@ export function Chart({ points, kind, unit = '' }: { points: ChartPoint[]; kind:
               const y = yAt(yMin) - h;
               const r = Math.min(4, barW / 2, h);
               const d = `M${x},${y + h} L${x},${y + r} Q${x},${y} ${x + r},${y} L${x + barW - r},${y} Q${x + barW},${y} ${x + barW},${y + r} L${x + barW},${y + h} Z`;
-              return <Path key={i} d={d} fill={colors.accent} opacity={i === sel ? 1 : 0.45} />;
+              // Every bar stays full colour; the selected one is darker and outlined.
+              return <Path key={i} d={d} fill={i === sel ? ACCENT_DARK : colors.accent} stroke={i === sel ? colors.text : 'none'} strokeWidth={1.5} />;
             })
           ) : (
             <>

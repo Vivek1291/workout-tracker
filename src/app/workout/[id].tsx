@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useData } from '../../data/DataProvider';
 import { ExercisePicker } from '../../components/ExercisePicker';
+import { SetChart } from '../../components/SetChart';
 import { ExerciseImage } from '../../components/ExerciseImage';
 import { confirm } from '../../components/confirm';
 import { colors, radius, space } from '../../components/theme';
@@ -292,6 +293,11 @@ export default function WorkoutScreen() {
                 </Row>
               );
             })}
+            {entry.sets.some((x) => x.reps > 0 || x.weight > 0) ? (
+              <View style={{ marginTop: space(3) }}>
+                <SetChart sets={entry.sets} unit={unit} timed={timed} compact />
+              </View>
+            ) : null}
             {entry.sets.some((s) => s.completed && s.type !== 'warmup') ? (
               <Muted style={{ marginTop: space(2) }}>
                 Best est. 1RM today:{' '}

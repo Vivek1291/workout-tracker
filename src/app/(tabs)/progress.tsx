@@ -1,13 +1,17 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useData } from '../../data/DataProvider';
 import { Chart, ChartPoint } from '../../components/Chart';
 import { ExercisePicker } from '../../components/ExercisePicker';
+import { PeriodDetailsSheet } from '../../components/PeriodDetailsSheet';
+import { SetChart } from '../../components/SetChart';
 import { colors, space } from '../../components/theme';
 import { Button, Card, Chip, Delta, Empty, Muted, Row, Screen, SectionHeader, Segmented, Stat } from '../../components/ui';
 import { formatDate, todayKey } from '../../lib/date';
 import {
+  bucketKey,
   bucketLabel,
   bucketTitle,
   change,
@@ -21,12 +25,31 @@ import {
 import { exerciseHistory, exerciseRecords, formatNumber } from '../../lib/stats';
 
 type View_ = 'overview' | 'exercise';
+
+function KindToggle({ value, onChange }: { value: 'bar' | 'line'; onChange: (k: 'bar' | 'line') => void }) {
+  return (
+    <Row style={{ gap: 4 }}>
+      {(['bar', 'line'] as const).map((k) => (
+        <Pressable
+          key={k}
+          accessibilityRole="button"
+          accessibilityLabel={`${k} chart`}
+          accessibilityState={{ selected: value === k }}
+          onPress={() => onChange(k)}
+          style={{ padding: 6, borderRadius: 6, backgroundColor: value === k ? colors.accentSoft : 'transparent' }}
+        >
+          <Ionicons name={k === 'bar' ? 'bar-chart' : 'analytics'} size={18} color={value === k ? colors.accent : colors.textMuted} />
+        </Pressable>
+      ))}
+    </Row>
+  );
+}
 type OverviewMetric = 'volume' | 'workouts' | 'reps' | 'sets';
 type ExerciseMetric = 'best1RM' | 'topWeight' | 'volume' | 'reps';
 
 const CURRENT_LABEL: Record<Period, string> = { day: 'Today', week: 'This week', month: 'This month', year: 'This year' };
 const COMPARE_LABEL: Record<Period, string> = {
-  day: 'Yesterday vs the day before',
+  day: 'Last workout day vs the one before',
   week: 'Last week vs the week before',
   month: 'Last month vs the month before',
   year: 'Last year vs the year before',
@@ -42,6 +65,12 @@ export default function ProgressScreen() {
   const [exMetric, setExMetric] = useState<ExerciseMetric>('best1RM');
   const [picker, setPicker] = useState(false);
   const [exerciseId, setExerciseId] = useState<string | null>(null);
+  const [ovKind, setOvKind] = useState<'bar' | 'line'>('bar');
+  const [exKind, setExKind] = useState<'bar' | 'line' | null>(null); // null = metric default
+  const [ovSel, setOvSel] = useState<number | null>(null);
+  const [exSel, setExSel] = useState<number | null>(null);
+  const [exSessionIdx, setExSessionIdx] = useState(0);
+  const [detailsKey, setDetailsKey] = useState<string | null>(null);
 
   const finished = useMemo(() => data.sessions.filter((s) => s.finishedAt), [data.sessions]);
   const keys = useMemo(() => recentBuckets(period, today, finished), [period, today, finished]);
@@ -59,13 +88,16 @@ export default function ProgressScreen() {
   // ----- Overview -----
   const overview = useMemo(() => overviewByPeriod(finished, period, keys), [finished, period, keys]);
   // Compare the last two *completed* periods; the current one is still in progress.
+  // For days, rest days would always compare as zero, so compare the last two *workout* days instead.
+  const trainedDays = overview.filter((b) => b.workouts > 0);
   const current = overview[overview.length - 1];
-  const cur = overview[overview.length - 2];
-  const prev = overview[overview.length - 3];
+  const cur = period === 'day' ? trainedDays[trainedDays.length - 1] : overview[overview.length - 2];
+  const prev = period === 'day' ? trainedDays[trainedDays.length - 2] : overview[overview.length - 3];
   const overviewPoints: ChartPoint[] = overview.map((b) => ({
     label: bucketLabel(b.key, period),
     title: bucketTitle(b.key, period),
-    value: b[overviewMetric],
+    // No training = no bar / a gap in the line (instead of a misleading drop to zero).
+    value: b.workouts ? b[overviewMetric] : null,
     detail: b.workouts ? `${b.workouts} workout${b.workouts === 1 ? '' : 's'}` : undefined,
   }));
 
@@ -98,6 +130,32 @@ export default function ProgressScreen() {
     detail: b.sessions ? `${b.sessions} session${b.sessions === 1 ? '' : 's'}` : 'not trained',
   }));
   const [exFirst, exLast] = firstAndLast(exValues);
+  const lastIdx = (vals: (number | null)[]) => {
+    for (let i = vals.length - 1; i >= 0; i--) if (vals[i]) return i;
+    return null;
+  };
+  const ovSelIdx = ovSel ?? lastIdx(overviewPoints.map((p) => p.value));
+  const exSelIdx = exSel ?? lastIdx(exValues);
+  const exSelKey = exSelIdx !== null ? exBuckets[exSelIdx]?.key : undefined;
+  // Sessions of the selected exercise inside the selected period, newest first.
+  const exSessions = useMemo(
+    () =>
+      exSelKey && selectedExercise
+        ? finished
+            .filter((s) => bucketKey(s.date, period) === exSelKey && s.entries.some((e) => e.exerciseId === selectedExercise && e.sets.some((x) => x.completed)))
+            .sort((a, b) => (a.date + a.startedAt < b.date + b.startedAt ? 1 : -1))
+        : [],
+    [finished, exSelKey, selectedExercise, period],
+  );
+  const exSession = exSessions[Math.min(exSessionIdx, exSessions.length - 1)];
+  const exSessionSets = exSession
+    ? exSession.entries.filter((e) => e.exerciseId === selectedExercise).flatMap((e) => e.sets.filter((x) => x.completed))
+    : [];
+  const resetSelection = () => {
+    setOvSel(null);
+    setExSel(null);
+    setExSessionIdx(0);
+  };
   const firstKey = exBuckets.find((_, i) => exValues[i] !== null && (exValues[i] as number) > 0)?.key;
   const records = useMemo(
     () => (selectedExercise ? exerciseRecords(exerciseHistory(finished, selectedExercise), finished, selectedExercise) : null),
@@ -143,7 +201,14 @@ export default function ProgressScreen() {
         value={view}
         onChange={setView}
       />
-      <Segmented<Period> options={PERIODS.map((p) => ({ value: p.value, label: p.label }))} value={period} onChange={setPeriod} />
+      <Segmented<Period>
+        options={PERIODS.map((p) => ({ value: p.value, label: p.label }))}
+        value={period}
+        onChange={(p) => {
+          setPeriod(p);
+          resetSelection();
+        }}
+      />
 
       {view === 'overview' ? (
         <>
@@ -179,9 +244,28 @@ export default function ProgressScreen() {
             ))}
           </View>
           <Card>
-            <Text style={{ fontWeight: '600', color: colors.textSecondary, marginBottom: space(1) }}>{overviewMeta[overviewMetric].title}</Text>
-            <Chart points={overviewPoints} kind="bar" unit={overviewMeta[overviewMetric].unit} />
-            <Muted style={{ marginTop: space(1) }}>Tap a bar to see that {periodNoun}.</Muted>
+            <Row style={{ justifyContent: 'space-between', marginBottom: space(1) }}>
+              <Text style={{ fontWeight: '600', color: colors.textSecondary, flexShrink: 1 }}>{overviewMeta[overviewMetric].title}</Text>
+              <KindToggle value={ovKind} onChange={setOvKind} />
+            </Row>
+            <Chart
+              points={overviewPoints}
+              kind={ovKind}
+              unit={overviewMeta[overviewMetric].unit}
+              selected={ovSelIdx}
+              onSelect={setOvSel}
+              onPressPoint={(i) => setDetailsKey(overview[i].key)}
+            />
+            {ovSelIdx !== null ? (
+              <Button
+                title={`See details: ${bucketTitle(overview[ovSelIdx].key, period)}`}
+                variant="secondary"
+                small
+                onPress={() => setDetailsKey(overview[ovSelIdx].key)}
+                style={{ marginTop: space(2) }}
+              />
+            ) : null}
+            <Muted style={{ marginTop: space(1) }}>Tap a {ovKind === 'bar' ? 'bar' : 'point'} for the {periodNoun}'s breakdown, gains and every set.</Muted>
           </Card>
 
           <SectionHeader>Strength change in this range</SectionHeader>
@@ -214,7 +298,10 @@ export default function ProgressScreen() {
         <>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space(1) }}>
             {loggedExercises.map((id) => (
-              <Chip key={id} label={exerciseById(id)?.name ?? '?'} selected={id === selectedExercise} onPress={() => setExerciseId(id)} />
+              <Chip key={id} label={exerciseById(id)?.name ?? '?'} selected={id === selectedExercise} onPress={() => {
+                  setExerciseId(id);
+                  resetSelection();
+                }} />
             ))}
             <Chip label="All exercises…" onPress={() => setPicker(true)} />
           </ScrollView>
@@ -240,14 +327,44 @@ export default function ProgressScreen() {
             ))}
           </View>
           <Card>
-            <Text style={{ fontWeight: '600', color: colors.textSecondary, marginBottom: space(1) }}>{exMetricMeta[exMetric].title}</Text>
-            <Chart points={exPoints} kind={exMetricMeta[exMetric].kind} unit={exMetricMeta[exMetric].unit} />
+            <Row style={{ justifyContent: 'space-between', marginBottom: space(1) }}>
+              <Text style={{ fontWeight: '600', color: colors.textSecondary, flexShrink: 1 }}>{exMetricMeta[exMetric].title}</Text>
+              <KindToggle value={exKind ?? exMetricMeta[exMetric].kind} onChange={setExKind} />
+            </Row>
+            <Chart
+              points={exPoints}
+              kind={exKind ?? exMetricMeta[exMetric].kind}
+              unit={exMetricMeta[exMetric].unit}
+              selected={exSelIdx}
+              onSelect={(i) => {
+                setExSel(i);
+                setExSessionIdx(0);
+              }}
+            />
+            <Muted style={{ marginTop: space(1) }}>Tap a {periodNoun} to see its sets below.</Muted>
             {exMetric === 'best1RM' ? (
               <Muted style={{ marginTop: space(1) }}>
                 Estimated 1RM combines weight and reps (Epley formula), so it rises whether you add weight or reps.
               </Muted>
             ) : null}
           </Card>
+
+          {exSession ? (
+            <Card>
+              <Row style={{ justifyContent: 'space-between' }}>
+                <Text style={{ fontWeight: '700', color: colors.text }}>Sets on {formatDate(exSession.date)}</Text>
+                <Button title="Open" small variant="ghost" onPress={() => router.push(`/workout/${exSession.id}`)} />
+              </Row>
+              {exSessions.length > 1 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {exSessions.map((s, i) => (
+                    <Chip key={s.id} label={formatDate(s.date)} selected={s.id === exSession.id} onPress={() => setExSessionIdx(i)} />
+                  ))}
+                </ScrollView>
+              ) : null}
+              <SetChart sets={exSessionSets} unit={unit} timed={exerciseById(selectedExercise)?.measure === 'time'} />
+            </Card>
+          ) : null}
 
           {records ? (
             <Card>
@@ -278,7 +395,15 @@ export default function ProgressScreen() {
           ))}
         </>
       )}
-      <ExercisePicker visible={picker} onClose={() => setPicker(false)} onSelect={setExerciseId} />
+      <ExercisePicker
+        visible={picker}
+        onClose={() => setPicker(false)}
+        onSelect={(id) => {
+          setExerciseId(id);
+          resetSelection();
+        }}
+      />
+      <PeriodDetailsSheet period={period} bucket={detailsKey} onClose={() => setDetailsKey(null)} />
     </Screen>
   );
 }

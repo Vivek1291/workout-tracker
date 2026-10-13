@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 export const colors = {
   bg: '#f4f4f2',
   surface: '#fcfcfb',
@@ -17,3 +19,6 @@ export const colors = {
 
 export const radius = { sm: 6, md: 10, lg: 14 };
 export const space = (n: number) => n * 4;
+
+/** SVG text falls back to a serif font on web; use the system sans-serif everywhere. */
+export const SVG_FONT = Platform.OS === 'web' ? 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif' : undefined;

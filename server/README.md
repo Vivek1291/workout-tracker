@@ -19,7 +19,7 @@ so documents look the same as in the exported JSON.
 
 | Method | Path | Body |
 |---|---|---|
-| GET | `/api/data` | — returns `{ version, exercises, plans, sessions }` |
+| GET | `/api/data` | — returns `{ version, ...every collection }` |
 | PUT | `/api/data` | full dataset (replaces everything) |
 | PUT | `/api/:collection/:id` | one document (upsert) |
 | DELETE | `/api/:collection/:id` | — |
